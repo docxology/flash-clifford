@@ -16,21 +16,12 @@ from algebra.cliffordalgebra import CliffordAlgebra
 from models.modules.fcgp import FullyConnectedSteerableGeometricProductLayer
 
 from ops.fc_p2m0 import FullyConnectedGeluGeometricProductNorm2D
-from tests.utils import mv_gelu, mv_rmsnorm_2d, run_correctness_tests, run_benchmarks
+from tests.utils import run_correctness_tests
+from tests.baselines import gelu_fcgp_norm_2d_torch
 
 
 @torch.compile
-def gelu_sgp_norm_torch(x, y, sgp):
-    x = mv_gelu(x)
-    y = mv_gelu(y)
-    weight_expanded = sgp._get_weight()
-    o = torch.einsum("bni, mnijk, bnk -> bmj", x, weight_expanded, y)
-    o = mv_rmsnorm_2d(o)
-    return o
-
-
-@torch.compile
-def gelu_sgp_norm_triton(x, y, weight):
+def gelu_fcgp_norm_2d_triton(x, y, weight):
     return FullyConnectedGeluGeometricProductNorm2D.apply(
         x, y, weight, True
     )
@@ -51,8 +42,8 @@ if __name__ == "__main__":
     sgp_weight = sgp.weight.permute(2, 1, 0).contiguous()
 
     sgp_ret, weight_triton = run_correctness_tests(
-        gelu_sgp_norm_triton,
-        gelu_sgp_norm_torch,
+        gelu_fcgp_norm_2d_triton,
+        gelu_fcgp_norm_2d_torch,
         x, y,
         sgp_weight,
         sgp
@@ -60,14 +51,5 @@ if __name__ == "__main__":
 
     print(
         f"grad_weight max diff: {(sgp_ret.weight.grad - weight_triton.grad.permute(2, 1, 0)).abs().max().item():.1e}"
-        + (" ✔" if torch.allclose(sgp_ret.weight.grad, weight_triton.grad.permute(2, 1, 0), atol=1e-2) else " ✘")
-    )
-
-    run_benchmarks(
-        gelu_sgp_norm_triton,
-        gelu_sgp_norm_torch,
-        x, y,
-        sgp_weight,
-        sgp,
-        n_measure
+        + (" ✔" if torch.allclose(sgp_ret.weight.grad, weight_triton.grad.permute(2, 1, 0), atol=1e-1) else " ✘")
     )

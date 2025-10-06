@@ -16,21 +16,13 @@ from algebra.cliffordalgebra import CliffordAlgebra
 from models.modules.gp import SteerableGeometricProductLayer
 
 from ops.p3m0 import WeightedGeluGeometricProductNorm3D
-from tests.utils import mv_gelu, mv_rmsnorm_3d, run_correctness_tests, run_benchmarks
+from tests.utils import run_correctness_tests
+from tests.baselines import gelu_sgp_norm_3d_torch
 
-
-@torch.compile
-def gelu_sgp_norm_torch(x, y, sgp):
-    x = mv_gelu(x)
-    y = mv_gelu(y)
-    weight_expanded = sgp._get_weight()
-    o = torch.einsum("bni, nijk, bnk -> bnj", x, weight_expanded, y)
-    o = mv_rmsnorm_3d(o)
-    return o
 
 
 @torch.compile
-def gelu_sgp_norm_triton(x, y, weight):
+def gelu_sgp_norm_3d_triton(x, y, weight):
     return WeightedGeluGeometricProductNorm3D.apply(
         x, y, weight, True
     )
@@ -51,8 +43,8 @@ if __name__ == "__main__":
     sgp_weight = sgp.weight
 
     sgp_ret, weight_triton = run_correctness_tests(
-        gelu_sgp_norm_triton,
-        gelu_sgp_norm_torch,
+        gelu_sgp_norm_3d_triton,
+        gelu_sgp_norm_3d_torch,
         x, y,
         sgp_weight,
         sgp
@@ -61,14 +53,4 @@ if __name__ == "__main__":
     print(
         f"grad_weight max diff: {(sgp_ret.weight.grad - weight_triton.grad).abs().max().item():.1e}"
         + (" ✔" if torch.allclose(sgp_ret.weight.grad, weight_triton.grad, atol=1e-2) else " ✘")
-    )
-
-    run_benchmarks(
-        gelu_sgp_norm_triton,
-        gelu_sgp_norm_torch,
-        x, y,
-        sgp_weight,
-        sgp,
-        n_measure,
-        warmup_iters=10
     )
