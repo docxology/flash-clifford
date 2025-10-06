@@ -2,6 +2,8 @@
 
 # Flash Clifford
 
+<img src="logo.png" alt="Flash Clifford Logo" width="20%">
+
 </div>
 
 Flash Clifford provides optimized Triton implementations of weighted geometric product and fully connected geometric product for 2D and 3D Euclidean spaces.
