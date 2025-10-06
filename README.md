@@ -2,7 +2,7 @@
 
 # Flash Clifford
 
-<img src="logo.png" alt="Flash Clifford Logo" width="20%">
+<img src="logo.png" alt="Flash Clifford Logo" width="50%">
 
 </div>
 
