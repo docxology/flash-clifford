@@ -47,7 +47,7 @@ from modules.layer import Layer
 x = torch.randn(8, 4096, 512).cuda()
 
 # Linear layer: grade-wise liner + weighted GP
-layer = Layer(512, 3)
+layer = Layer(512, 3).cuda()
 
 output = layer(x)
 ```
