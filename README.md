@@ -7,7 +7,7 @@
 </div>
 
 `flash-clifford` provides optimized Triton implementations of weighted geometric product and fully connected geometric product for 2D and 3D Euclidean spaces.
-The implementation fuses GELU activation, fully-connected/weighted geometric products, and grade-wise RMSNorm into few kernel operations, achieving significant speedups and memory savings over baseline PyTorch implementations that employs matrix multiplication. The spedup is achieved by manually encoding geometric product rules in forward and backward passes, which otherwise is done via multiplication with a sparse matrix (85-99% sparse depending on the dimensionality).
+The implementation fuses GELU activation, fully-connected/weighted geometric products, and grade-wise RMSNorm into few kernel operations, achieving significant speedups and memory savings over baseline PyTorch implementations that employs matrix multiplication. The speedup is achieved by manually encoding geometric product rules in forward and backward passes, which otherwise is done via multiplication with a sparse matrix (85-99% sparse depending on the dimensionality).
 
 ## Performance
 
@@ -43,11 +43,11 @@ uv pip install torch triton
 import torch
 from modules.layer import Layer
 
-# Input: multivectors of shape (8, batch, features)
+# Input: multivectors in 3D of shape (8, batch, features)
 x = torch.randn(8, 4096, 512).cuda()
 
-# Linear layer: grade-wise liner + weighted GP
-layer = Layer(512, 3).cuda()
+# Linear layer: grade-wise linear + weighted GP
+layer = Layer(512, dims=3, normalize=True, use_fc=False).cuda()
 
 output = layer(x)
 ```
