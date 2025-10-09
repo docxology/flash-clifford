@@ -8,6 +8,12 @@ NUM_PRODUCT_WEIGHTS = 10
 WEIGHT_EXPANSION = [0, 3, 7, 1, 4, 5, 8, 1, 5, 4, 8, 2, 6, 9]
 EPS = 1e-6
 
+# tuned at RTX 4500
+DEFAULT_BATCH_BLOCK = 4
+DEFAULT_FEATURE_BLOCK = 128
+DEFAULT_NUM_WARPS = 16
+DEFAULT_NUM_STAGES = 1
+
 
 @triton.jit
 def compute_gelu_gate(x):
@@ -30,7 +36,6 @@ def gelu_pairwise_kernel_fwd(
     n_features: tl.constexpr,
     BATCH_BLOCK: tl.constexpr,
     FEATURE_BLOCK: tl.constexpr,
-    MV_DIM: tl.constexpr,
 ):
     """
     Apply GELU non-linearity to inputs and compute pairwise products for geometric product.
@@ -45,18 +50,19 @@ def gelu_pairwise_kernel_fwd(
     feature_mask = feature_ids < n_features
     batch_feature_mask = batch_mask[:, None] & feature_mask[None, :]
 
-    feature_offset = (batch_ids[:, None] * n_features * MV_DIM + feature_ids[None, :] * MV_DIM)
+    stride_component = batch_size * n_features
+    base_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
     pairwise_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
 
-    x0 = tl.load(x_ptr + feature_offset + 0, mask=batch_feature_mask)
-    x1 = tl.load(x_ptr + feature_offset + 1, mask=batch_feature_mask)
-    x2 = tl.load(x_ptr + feature_offset + 2, mask=batch_feature_mask)
-    x3 = tl.load(x_ptr + feature_offset + 3, mask=batch_feature_mask)
+    x0 = tl.load(x_ptr + 0 * stride_component + base_offset, mask=batch_feature_mask)
+    x1 = tl.load(x_ptr + 1 * stride_component + base_offset, mask=batch_feature_mask)
+    x2 = tl.load(x_ptr + 2 * stride_component + base_offset, mask=batch_feature_mask)
+    x3 = tl.load(x_ptr + 3 * stride_component + base_offset, mask=batch_feature_mask)
 
-    y0 = tl.load(y_ptr + feature_offset + 0, mask=batch_feature_mask)
-    y1 = tl.load(y_ptr + feature_offset + 1, mask=batch_feature_mask)
-    y2 = tl.load(y_ptr + feature_offset + 2, mask=batch_feature_mask)
-    y3 = tl.load(y_ptr + feature_offset + 3, mask=batch_feature_mask)
+    y0 = tl.load(y_ptr + 0 * stride_component + base_offset, mask=batch_feature_mask)
+    y1 = tl.load(y_ptr + 1 * stride_component + base_offset, mask=batch_feature_mask)
+    y2 = tl.load(y_ptr + 2 * stride_component + base_offset, mask=batch_feature_mask)
+    y3 = tl.load(y_ptr + 3 * stride_component + base_offset, mask=batch_feature_mask)
 
     gate_x = compute_gelu_gate(x0)
     gate_y = compute_gelu_gate(y0)
@@ -112,11 +118,8 @@ def assemble_kernel(
     n_features: tl.constexpr,
     BATCH_BLOCK: tl.constexpr,
     FEATURE_BLOCK: tl.constexpr,
-    MV_DIM: tl.constexpr,
 ):
-    """
-    Gather linearly transformed pairwise products and compute the geometric product.
-    """
+    """Gather linearly transformed pairwise products and compute the geometric product."""
     batch_block_id = tl.program_id(axis=0)
     thread_block_id = tl.program_id(axis=1)
 
@@ -127,7 +130,8 @@ def assemble_kernel(
     feature_mask = feature_ids < n_features
     batch_feature_mask = batch_mask[:, None] & feature_mask[None, :]
 
-    feature_offset = batch_ids[:, None] * n_features * MV_DIM + feature_ids[None, :] * MV_DIM
+    stride_component = batch_size * n_features
+    base_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
     transformed_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
 
     t0 = tl.load(transformed_ptr + 0*batch_size*n_features + transformed_offset, mask=batch_feature_mask)
@@ -155,15 +159,15 @@ def assemble_kernel(
         pn_vector = tl.sum(o1*o1 + o2*o2, axis=1) / n_features
         pn_pseudo = tl.sum(o3 * o3, axis=1) / n_features
 
-        tl.atomic_add(pnorm_ptr + batch_ids*MV_DIM + 0, pn_scalar, mask=batch_mask)
-        tl.atomic_add(pnorm_ptr + batch_ids*MV_DIM + 1, pn_vector, mask=batch_mask)
-        tl.atomic_add(pnorm_ptr + batch_ids*MV_DIM + 2, pn_vector, mask=batch_mask)
-        tl.atomic_add(pnorm_ptr + batch_ids*MV_DIM + 3, pn_pseudo, mask=batch_mask)
+        tl.atomic_add(pnorm_ptr + 0*batch_size + batch_ids, pn_scalar, mask=batch_mask)
+        tl.atomic_add(pnorm_ptr + 1*batch_size + batch_ids, pn_vector, mask=batch_mask)
+        tl.atomic_add(pnorm_ptr + 2*batch_size + batch_ids, pn_vector, mask=batch_mask)
+        tl.atomic_add(pnorm_ptr + 3*batch_size + batch_ids, pn_pseudo, mask=batch_mask)
 
-    tl.store(output_ptr + feature_offset + 0, o0, mask=batch_feature_mask)
-    tl.store(output_ptr + feature_offset + 1, o1, mask=batch_feature_mask)
-    tl.store(output_ptr + feature_offset + 2, o2, mask=batch_feature_mask)
-    tl.store(output_ptr + feature_offset + 3, o3, mask=batch_feature_mask)
+    tl.store(output_ptr + 0 * stride_component + base_offset, o0, mask=batch_feature_mask)
+    tl.store(output_ptr + 1 * stride_component + base_offset, o1, mask=batch_feature_mask)
+    tl.store(output_ptr + 2 * stride_component + base_offset, o2, mask=batch_feature_mask)
+    tl.store(output_ptr + 3 * stride_component + base_offset, o3, mask=batch_feature_mask)
 
 
 @triton.jit
@@ -190,8 +194,11 @@ def normalize_with_sqrt_kernel(
 
     component_ids = tl.arange(0, MV_DIM)[None, None, :]
 
-    feature_offset = (batch_ids[:, None, None] * n_features * MV_DIM + feature_ids[None, :, None] * MV_DIM + component_ids)
-    norm_indices = batch_ids[:, None, None] * MV_DIM + component_ids
+    feature_offset = (component_ids * batch_size * n_features +
+                     batch_ids[:, None, None] * n_features +
+                     feature_ids[None, :, None])
+
+    norm_indices = component_ids * batch_size + batch_ids[:, None, None]
 
     pnorm = tl.load(pnorm_ptr + norm_indices, mask=batch_mask[:, None, None])
     mv = tl.load(output_ptr + feature_offset, mask=batch_feature_mask)
@@ -208,27 +215,24 @@ def gelu_fc_geometric_product_norm_fwd(
     weight: torch.Tensor,
     expansion_indices: torch.Tensor,
     normalize: bool,
-    batch_block: int,
-    feature_block: int,
-    num_warps: int,
 ) -> torch.Tensor:
     """Fused operation: GELU non-linearity, fully connected geometric product, and grade-wise RMSNorm."""
     assert x.shape == y.shape
-    assert x.shape[1] == weight.shape[1] == weight.shape[2]
-    assert x.shape[2] == MV_DIM
+    assert x.shape[0] == MV_DIM
+    assert x.shape[2] == weight.shape[1] == weight.shape[2]
     assert weight.shape[0] == NUM_PRODUCT_WEIGHTS
 
-    B, N, _ = x.shape
+    _, B, N = x.shape
 
-    BATCH_BLOCK = min(batch_block, B)
-    FEATURE_BLOCK = min(feature_block, N)
+    BATCH_BLOCK = min(DEFAULT_BATCH_BLOCK, B)
+    FEATURE_BLOCK = min(DEFAULT_FEATURE_BLOCK, N)
 
     num_blocks_batch = triton.cdiv(B, BATCH_BLOCK)
     num_blocks_features = triton.cdiv(N, FEATURE_BLOCK)
 
     pairwise = torch.empty((len(WEIGHT_EXPANSION), B, N), device=x.device, dtype=x.dtype)
-    partial_norm = (torch.zeros((B, MV_DIM), device=x.device, dtype=x.dtype) if normalize else torch.zeros((1,), device=x.device, dtype=x.dtype))
-    output = torch.empty((B, N, MV_DIM), device=x.device, dtype=x.dtype)
+    partial_norm = (torch.zeros((MV_DIM, B), device=x.device, dtype=x.dtype) if normalize else torch.zeros((1,), device=x.device, dtype=x.dtype))
+    output = torch.empty_like(x)
 
     grid = (num_blocks_batch, num_blocks_features)
 
@@ -240,8 +244,8 @@ def gelu_fc_geometric_product_norm_fwd(
         N,
         BATCH_BLOCK,
         FEATURE_BLOCK,
-        MV_DIM,
-        num_warps=num_warps,
+        num_warps=DEFAULT_NUM_WARPS,
+        num_stages=DEFAULT_NUM_STAGES,
     )
 
     transformed = torch.bmm(pairwise, weight[expansion_indices])
@@ -255,8 +259,8 @@ def gelu_fc_geometric_product_norm_fwd(
         N,
         BATCH_BLOCK,
         FEATURE_BLOCK,
-        MV_DIM,
-        num_warps=num_warps,
+        num_warps=DEFAULT_NUM_WARPS,
+        num_stages=DEFAULT_NUM_STAGES,
     )
 
     if normalize:
@@ -269,7 +273,8 @@ def gelu_fc_geometric_product_norm_fwd(
             FEATURE_BLOCK,
             MV_DIM,
             EPS,
-            num_warps=num_warps,
+            num_warps=DEFAULT_NUM_WARPS,
+            num_stages=DEFAULT_NUM_STAGES,
         )
 
     return output, pairwise, partial_norm
@@ -285,8 +290,6 @@ def grad_o_dot_o_kernel(
     n_features: tl.constexpr,
     BATCH_BLOCK: tl.constexpr,
     FEATURE_BLOCK: tl.constexpr,
-    MV_DIM: tl.constexpr,
-    NUM_GRADES: tl.constexpr,
     EPS: tl.constexpr,
 ):
     """Compute the dot product of grad_output and output for each grade, accumulate across all features."""
@@ -300,21 +303,22 @@ def grad_o_dot_o_kernel(
     feature_mask = feature_ids < n_features
     batch_feature_mask = batch_mask[:, None] & feature_mask[None, :]
 
-    offset = batch_ids[:, None] * n_features * MV_DIM + feature_ids[None, :] * MV_DIM
+    stride_component = batch_size * n_features
+    offset = batch_ids[:, None] * n_features + feature_ids[None, :]
 
-    go0 = tl.load(grad_output_ptr + offset + 0, mask=batch_feature_mask)
-    go1 = tl.load(grad_output_ptr + offset + 1, mask=batch_feature_mask)
-    go2 = tl.load(grad_output_ptr + offset + 2, mask=batch_feature_mask)
-    go3 = tl.load(grad_output_ptr + offset + 3, mask=batch_feature_mask)
+    go0 = tl.load(grad_output_ptr + 0 * stride_component + offset, mask=batch_feature_mask)
+    go1 = tl.load(grad_output_ptr + 1 * stride_component + offset, mask=batch_feature_mask)
+    go2 = tl.load(grad_output_ptr + 2 * stride_component + offset, mask=batch_feature_mask)
+    go3 = tl.load(grad_output_ptr + 3 * stride_component + offset, mask=batch_feature_mask)
 
-    pn_scalar = tl.load(pnorm_ptr + batch_ids*MV_DIM + 0, mask=batch_mask)[:, None]
-    pn_vector = tl.load(pnorm_ptr + batch_ids*MV_DIM + 1, mask=batch_mask)[:, None]
-    pn_pseudo = tl.load(pnorm_ptr + batch_ids*MV_DIM + 3, mask=batch_mask)[:, None]
+    pn_scalar = tl.load(pnorm_ptr + 0*batch_size + batch_ids, mask=batch_mask)[:, None]
+    pn_vector = tl.load(pnorm_ptr + 1*batch_size + batch_ids, mask=batch_mask)[:, None]
+    pn_pseudo = tl.load(pnorm_ptr + 3*batch_size + batch_ids, mask=batch_mask)[:, None]
 
-    o0 = tl.load(output_ptr + offset + 0, mask=batch_feature_mask)
-    o1 = tl.load(output_ptr + offset + 1, mask=batch_feature_mask)
-    o2 = tl.load(output_ptr + offset + 2, mask=batch_feature_mask)
-    o3 = tl.load(output_ptr + offset + 3, mask=batch_feature_mask)
+    o0 = tl.load(output_ptr + 0 * stride_component + offset, mask=batch_feature_mask)
+    o1 = tl.load(output_ptr + 1 * stride_component + offset, mask=batch_feature_mask)
+    o2 = tl.load(output_ptr + 2 * stride_component + offset, mask=batch_feature_mask)
+    o3 = tl.load(output_ptr + 3 * stride_component + offset, mask=batch_feature_mask)
 
     rms_scalar = tl.sqrt(pn_scalar + EPS)
     rms_vector = tl.sqrt(pn_vector + EPS)
@@ -324,9 +328,9 @@ def grad_o_dot_o_kernel(
     dot_vector = tl.sum(rms_vector * (go1*o1 + go2*o2), axis=1)
     dot_pseudo = tl.sum(rms_pseudo * go3 * o3, axis=1)
 
-    tl.atomic_add(dot_ptr + batch_ids*NUM_GRADES + 0, dot_scalar, mask=batch_mask)
-    tl.atomic_add(dot_ptr + batch_ids*NUM_GRADES + 1, dot_vector, mask=batch_mask)
-    tl.atomic_add(dot_ptr + batch_ids*NUM_GRADES + 2, dot_pseudo, mask=batch_mask)
+    tl.atomic_add(dot_ptr + 0*batch_size + batch_ids, dot_scalar, mask=batch_mask)
+    tl.atomic_add(dot_ptr + 1*batch_size + batch_ids, dot_vector, mask=batch_mask)
+    tl.atomic_add(dot_ptr + 2*batch_size + batch_ids, dot_pseudo, mask=batch_mask)
 
 
 @triton.jit
@@ -341,8 +345,6 @@ def disassemble_kernel(
     n_features: tl.constexpr,
     BATCH_BLOCK: tl.constexpr,
     FEATURE_BLOCK: tl.constexpr,
-    MV_DIM: tl.constexpr,
-    NUM_GRADES: tl.constexpr,
     EPS: tl.constexpr,
 ):
     """
@@ -358,27 +360,28 @@ def disassemble_kernel(
     feature_mask = feature_ids < n_features
     batch_feature_mask = batch_mask[:, None] & feature_mask[None, :]
 
-    feature_offset = batch_ids[:, None] * n_features * MV_DIM + feature_ids[None, :] * MV_DIM
+    stride_component = batch_size * n_features
+    base_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
     transformed_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
 
-    go0 = tl.load(grad_output_ptr + feature_offset + 0, mask=batch_feature_mask)
-    go1 = tl.load(grad_output_ptr + feature_offset + 1, mask=batch_feature_mask)
-    go2 = tl.load(grad_output_ptr + feature_offset + 2, mask=batch_feature_mask)
-    go3 = tl.load(grad_output_ptr + feature_offset + 3, mask=batch_feature_mask)
+    go0 = tl.load(grad_output_ptr + 0 * stride_component + base_offset, mask=batch_feature_mask)
+    go1 = tl.load(grad_output_ptr + 1 * stride_component + base_offset, mask=batch_feature_mask)
+    go2 = tl.load(grad_output_ptr + 2 * stride_component + base_offset, mask=batch_feature_mask)
+    go3 = tl.load(grad_output_ptr + 3 * stride_component + base_offset, mask=batch_feature_mask)
 
     if NORMALIZE:
-        o0 = tl.load(output_ptr + feature_offset + 0, mask=batch_feature_mask)
-        o1 = tl.load(output_ptr + feature_offset + 1, mask=batch_feature_mask)
-        o2 = tl.load(output_ptr + feature_offset + 2, mask=batch_feature_mask)
-        o3 = tl.load(output_ptr + feature_offset + 3, mask=batch_feature_mask)
+        o0 = tl.load(output_ptr + 0 * stride_component + base_offset, mask=batch_feature_mask)
+        o1 = tl.load(output_ptr + 1 * stride_component + base_offset, mask=batch_feature_mask)
+        o2 = tl.load(output_ptr + 2 * stride_component + base_offset, mask=batch_feature_mask)
+        o3 = tl.load(output_ptr + 3 * stride_component + base_offset, mask=batch_feature_mask)
 
-        pn_scalar = tl.load(pnorm_ptr + batch_ids*MV_DIM + 0, mask=batch_mask)[:, None]
-        pn_vector = tl.load(pnorm_ptr + batch_ids*MV_DIM + 1, mask=batch_mask)[:, None]
-        pn_pseudo = tl.load(pnorm_ptr + batch_ids*MV_DIM + 3, mask=batch_mask)[:, None]
+        pn_scalar = tl.load(pnorm_ptr + 0*batch_size + batch_ids, mask=batch_mask)[:, None]
+        pn_vector = tl.load(pnorm_ptr + 1*batch_size + batch_ids, mask=batch_mask)[:, None]
+        pn_pseudo = tl.load(pnorm_ptr + 3*batch_size + batch_ids, mask=batch_mask)[:, None]
 
-        dot_scalar = tl.load(dot_ptr + batch_ids*NUM_GRADES + 0, mask=batch_mask)[:, None]
-        dot_vector = tl.load(dot_ptr + batch_ids*NUM_GRADES + 1, mask=batch_mask)[:, None]
-        dot_pseudo = tl.load(dot_ptr + batch_ids*NUM_GRADES + 2, mask=batch_mask)[:, None]
+        dot_scalar = tl.load(dot_ptr + 0*batch_size + batch_ids, mask=batch_mask)[:, None]
+        dot_vector = tl.load(dot_ptr + 1*batch_size + batch_ids, mask=batch_mask)[:, None]
+        dot_pseudo = tl.load(dot_ptr + 2*batch_size + batch_ids, mask=batch_mask)[:, None]
 
         rms_scalar = tl.sqrt(pn_scalar + EPS)
         rms_vector = tl.sqrt(pn_vector + EPS)
@@ -416,7 +419,6 @@ def gelu_pairwise_kernel_bwd(
     n_features: tl.constexpr,
     BATCH_BLOCK: tl.constexpr,
     FEATURE_BLOCK: tl.constexpr,
-    MV_DIM: tl.constexpr,
 ):
     """
     Apply GELU non-linearity to inputs and compute required pairwise products.
@@ -431,7 +433,8 @@ def gelu_pairwise_kernel_bwd(
     feature_mask = feature_ids < n_features
     batch_feature_mask = batch_mask[:, None] & feature_mask[None, :]
 
-    feature_offset = batch_ids[:, None] * n_features * MV_DIM + feature_ids[None, :] * MV_DIM
+    stride_component = batch_size * n_features
+    base_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
     pairwise_offset = batch_ids[:, None] * n_features + feature_ids[None, :]
     
     gp0 = tl.load(grad_pairwise_ptr + 0*batch_size*n_features + pairwise_offset, mask=batch_feature_mask)
@@ -449,15 +452,15 @@ def gelu_pairwise_kernel_bwd(
     gp12 = tl.load(grad_pairwise_ptr + 12*batch_size*n_features + pairwise_offset, mask=batch_feature_mask)
     gp13 = tl.load(grad_pairwise_ptr + 13*batch_size*n_features + pairwise_offset, mask=batch_feature_mask)
 
-    x0_raw = tl.load(x_ptr + feature_offset + 0, mask=batch_feature_mask)
-    x1_raw = tl.load(x_ptr + feature_offset + 1, mask=batch_feature_mask)
-    x2_raw = tl.load(x_ptr + feature_offset + 2, mask=batch_feature_mask)
-    x3_raw = tl.load(x_ptr + feature_offset + 3, mask=batch_feature_mask)
+    x0_raw = tl.load(x_ptr + 0 * stride_component + base_offset, mask=batch_feature_mask)
+    x1_raw = tl.load(x_ptr + 1 * stride_component + base_offset, mask=batch_feature_mask)
+    x2_raw = tl.load(x_ptr + 2 * stride_component + base_offset, mask=batch_feature_mask)
+    x3_raw = tl.load(x_ptr + 3 * stride_component + base_offset, mask=batch_feature_mask)
 
-    y0_raw = tl.load(y_ptr + feature_offset + 0, mask=batch_feature_mask)
-    y1_raw = tl.load(y_ptr + feature_offset + 1, mask=batch_feature_mask)
-    y2_raw = tl.load(y_ptr + feature_offset + 2, mask=batch_feature_mask)
-    y3_raw = tl.load(y_ptr + feature_offset + 3, mask=batch_feature_mask)
+    y0_raw = tl.load(y_ptr + 0 * stride_component + base_offset, mask=batch_feature_mask)
+    y1_raw = tl.load(y_ptr + 1 * stride_component + base_offset, mask=batch_feature_mask)
+    y2_raw = tl.load(y_ptr + 2 * stride_component + base_offset, mask=batch_feature_mask)
+    y3_raw = tl.load(y_ptr + 3 * stride_component + base_offset, mask=batch_feature_mask)
 
     # collect gradients from pairwise products
     gate_x = compute_gelu_gate(x0_raw)
@@ -497,15 +500,15 @@ def gelu_pairwise_kernel_bwd(
     y_grad_2 = gate_y * y_grad_2
     y_grad_3 = gate_y * y_grad_3
 
-    tl.store(grad_x_ptr + feature_offset + 0, x_grad_0, mask=batch_feature_mask)
-    tl.store(grad_x_ptr + feature_offset + 1, x_grad_1, mask=batch_feature_mask)
-    tl.store(grad_x_ptr + feature_offset + 2, x_grad_2, mask=batch_feature_mask)
-    tl.store(grad_x_ptr + feature_offset + 3, x_grad_3, mask=batch_feature_mask)
+    tl.store(grad_x_ptr + 0 * stride_component + base_offset, x_grad_0, mask=batch_feature_mask)
+    tl.store(grad_x_ptr + 1 * stride_component + base_offset, x_grad_1, mask=batch_feature_mask)
+    tl.store(grad_x_ptr + 2 * stride_component + base_offset, x_grad_2, mask=batch_feature_mask)
+    tl.store(grad_x_ptr + 3 * stride_component + base_offset, x_grad_3, mask=batch_feature_mask)
 
-    tl.store(grad_y_ptr + feature_offset + 0, y_grad_0, mask=batch_feature_mask)
-    tl.store(grad_y_ptr + feature_offset + 1, y_grad_1, mask=batch_feature_mask)
-    tl.store(grad_y_ptr + feature_offset + 2, y_grad_2, mask=batch_feature_mask)
-    tl.store(grad_y_ptr + feature_offset + 3, y_grad_3, mask=batch_feature_mask)
+    tl.store(grad_y_ptr + 0 * stride_component + base_offset, y_grad_0, mask=batch_feature_mask)
+    tl.store(grad_y_ptr + 1 * stride_component + base_offset, y_grad_1, mask=batch_feature_mask)
+    tl.store(grad_y_ptr + 2 * stride_component + base_offset, y_grad_2, mask=batch_feature_mask)
+    tl.store(grad_y_ptr + 3 * stride_component + base_offset, y_grad_3, mask=batch_feature_mask)
 
 
 def gelu_fc_geometric_product_norm_bwd(
@@ -518,22 +521,19 @@ def gelu_fc_geometric_product_norm_bwd(
     grad_output: torch.Tensor,
     expansion_indices: torch.Tensor,
     normalize: bool,
-    batch_block: int,
-    feature_block: int,
-    num_warps: int,
 ) -> torch.Tensor:
     """Backward pass for the fused operation."""
-    B, N, _ = x.shape
+    _, B, N = x.shape
 
-    BATCH_BLOCK = min(batch_block, B)
-    FEATURE_BLOCK = min(feature_block, N)
+    BATCH_BLOCK = min(DEFAULT_BATCH_BLOCK, B)
+    FEATURE_BLOCK = min(DEFAULT_FEATURE_BLOCK, N)
 
     num_blocks_batch = triton.cdiv(B, BATCH_BLOCK)
     num_blocks_features = triton.cdiv(N, FEATURE_BLOCK)
 
     grad_x = torch.zeros_like(x)
     grad_y = torch.zeros_like(y)
-    dot = (torch.zeros((B, NUM_GRADES), device=x.device, dtype=x.dtype) if normalize else torch.empty(0))
+    dot = (torch.zeros((NUM_GRADES, B), device=x.device, dtype=x.dtype) if normalize else torch.empty(0))
     grad_weight = torch.zeros((NUM_PRODUCT_WEIGHTS, N, N), device=x.device, dtype=weight.dtype)
     grad_transformed = torch.empty((len(WEIGHT_EXPANSION), B, N), device=x.device, dtype=x.dtype)
 
@@ -549,10 +549,9 @@ def gelu_fc_geometric_product_norm_bwd(
             N,
             BATCH_BLOCK,
             FEATURE_BLOCK,
-            MV_DIM,
-            NUM_GRADES,
             EPS,
-            num_warps=num_warps,
+            num_warps=DEFAULT_NUM_WARPS,
+            num_stages=DEFAULT_NUM_STAGES,
         )
 
     disassemble_kernel[grid](
@@ -566,10 +565,9 @@ def gelu_fc_geometric_product_norm_bwd(
         N,
         BATCH_BLOCK,
         FEATURE_BLOCK,
-        MV_DIM,
-        NUM_GRADES,
         EPS,
-        num_warps=num_warps,
+        num_warps=DEFAULT_NUM_WARPS,
+        num_stages=DEFAULT_NUM_STAGES,
     )
 
     grad_pairwise = torch.bmm(grad_transformed, weight[expansion_indices].transpose(-2, -1))
@@ -586,40 +584,21 @@ def gelu_fc_geometric_product_norm_bwd(
         N,
         BATCH_BLOCK,
         FEATURE_BLOCK,
-        MV_DIM,
-        num_warps=num_warps,
+        num_warps=DEFAULT_NUM_WARPS,
+        num_stages=DEFAULT_NUM_STAGES,
     )
 
     return grad_x, grad_y, grad_weight
 
 
 class FullyConnectedGeluGeometricProductNorm2D(torch.autograd.Function):
-    """
-    Fused operation that applies GELU non-linearity to two multivector inputs,
-    then computes their fully connected geometric product, and applies RMSNorm.
-
-    Args:
-        x (torch.Tensor): Input tensor of shape (B, N, MV_DIM).
-        y (torch.Tensor): Input tensor of shape (B, N, MV_DIM).
-        weight (torch.Tensor): Weight tensor of shape (N, NUM_PRODUCT_WEIGHTS), one weight per geometric product component.
-        normalize (bool): Whether to apply RMSNorm after the geometric product.
-        batch_block (int): Block size for batching in Triton kernel.
-        feature_block (int): Block size for features in Triton kernel.
-        num_warps (int): Number of warps to use in Triton kernel.
-
-    Returns:
-        torch.Tensor: Output tensor of shape (B, N, MV_DIM) after applying the fused operation.
-    """
 
     @staticmethod
     @torch.amp.custom_fwd(device_type="cuda")
-    def forward(ctx, x, y, weight, normalize, batch_block=4, feature_block=128, num_warps=16):
+    def forward(ctx, x, y, weight, normalize):
         assert x.is_contiguous() and y.is_contiguous() and weight.is_contiguous()
 
         ctx.dtype = x.dtype
-        ctx.batch_block = batch_block
-        ctx.feature_block = feature_block
-        ctx.num_warps = num_warps
         ctx.normalize = normalize
 
         expansion_indices = torch.tensor(WEIGHT_EXPANSION, device=x.device)
@@ -630,9 +609,6 @@ class FullyConnectedGeluGeometricProductNorm2D(torch.autograd.Function):
             weight,
             expansion_indices,
             normalize,
-            batch_block=batch_block,
-            feature_block=feature_block,
-            num_warps=num_warps,
         )
 
         ctx.save_for_backward(x, y, weight, o, pairwise, partial_norm, expansion_indices)
@@ -656,9 +632,23 @@ class FullyConnectedGeluGeometricProductNorm2D(torch.autograd.Function):
             grad_output,
             expansion_indices,
             ctx.normalize,
-            batch_block=ctx.batch_block,
-            feature_block=ctx.feature_block,
-            num_warps=ctx.num_warps,
         )
 
         return grad_x, grad_y, grad_weight, None, None, None, None
+
+
+def fused_gelu_fc_sgp_norm_2d(x, y, weight, normalize=True):
+    """
+    Fused operation that applies GELU non-linearity to two multivector inputs,
+    then computes their fully connected geometric product, and applies RMSNorm.
+
+    Args:
+        x (torch.Tensor): Input tensor of shape (MV_DIM, B, N).
+        y (torch.Tensor): Input tensor of shape (MV_DIM, B, N).
+        weight (torch.Tensor): Weight tensor of shape (NUM_PRODUCT_WEIGHTS, N, N), one weight per geometric product component.
+        normalize (bool): Whether to apply RMSNorm after the geometric product.
+
+    Returns:
+        torch.Tensor: Output tensor of shape (MV_DIM, B, N) after applying the fused operation.
+    """
+    return FullyConnectedGeluGeometricProductNorm2D.apply(x, y, weight, normalize)

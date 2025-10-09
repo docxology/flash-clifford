@@ -293,6 +293,10 @@ def plot_heatmap(results, metric_key, title, save_path, cmap='RdYlGn', invert_cm
 
 def run_correctness_tests(triton_fn, torch_fn, x, y, weight, sgp):
     """Run forward and backward correctness tests."""
+    # Warmup
+    _ = triton_fn(x, y, weight)
+    _ = torch_fn(x, y, sgp._get_weight())
+    
     # Forward correctness check
     out_triton = triton_fn(x, y, weight)
     out_torch = torch_fn(x, y, sgp._get_weight())
@@ -309,11 +313,11 @@ def run_correctness_tests(triton_fn, torch_fn, x, y, weight, sgp):
     x_triton = x.clone().detach().requires_grad_(True)
     y_triton = y.clone().detach().requires_grad_(True)
     weight_triton = weight.detach().clone().requires_grad_(True)
-
+    
     out_torch = torch_fn(x_torch, y_torch, sgp._get_weight())
     out_triton = triton_fn(x_triton, y_triton, weight_triton)
 
-    grad_output = torch.randn_like(out_torch)
+    grad_output = torch.randn_like(out_torch).contiguous()
     out_torch.backward(grad_output)
     out_triton.backward(grad_output)
 

@@ -16,7 +16,7 @@ sys.path.append("clifford-group-equivariant-neural-networks")
 from algebra.cliffordalgebra import CliffordAlgebra
 from models.modules.gp import SteerableGeometricProductLayer
 
-from ops.p3m0 import WeightedGeluGeometricProductNorm3D
+from ops.p3m0 import fused_gelu_sgp_norm_3d
 from tests.baselines import gelu_sgp_norm_3d_torch
 from tests.utils import (
     plot_heatmap,
@@ -25,18 +25,13 @@ from tests.utils import (
 )
 
 
-@torch.compile
-def gelu_sgp_norm_3d_triton(x, y, weight):
-    return WeightedGeluGeometricProductNorm3D.apply(x, y, weight, True)
-
-
 def setup_benchmark(batch_size, num_features):
     """Setup tensors and layers for p3m0 benchmark."""
     algebra = CliffordAlgebra((1, 1, 1))
     sgp = SteerableGeometricProductLayer(algebra, num_features).cuda()
 
-    x = torch.randn(batch_size, num_features, 8).cuda()
-    y = torch.randn(batch_size, num_features, 8).cuda()
+    x = torch.randn(8, batch_size, num_features).cuda()
+    y = torch.randn(8, batch_size, num_features).cuda()
     weight = sgp.weight
     weight_expanded = sgp._get_weight()
 
@@ -49,7 +44,7 @@ if __name__ == "__main__":
     path = "tests/benchmarks/results/p3m0"
 
     results = run_sweep(
-        gelu_sgp_norm_3d_triton,
+        fused_gelu_sgp_norm_3d,
         gelu_sgp_norm_3d_torch,
         setup_benchmark,
         batch_sizes=[1024, 2048, 4096, 8192],

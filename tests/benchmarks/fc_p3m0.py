@@ -16,7 +16,7 @@ sys.path.append("clifford-group-equivariant-neural-networks")
 from algebra.cliffordalgebra import CliffordAlgebra
 from models.modules.fcgp import FullyConnectedSteerableGeometricProductLayer
 
-from ops.fc_p3m0 import FullyConnectedGeluGeometricProductNorm3D
+from ops.fc_p3m0 import fused_gelu_fc_sgp_norm_3d
 from tests.baselines import gelu_fcgp_norm_3d_torch
 from tests.utils import (
     plot_heatmap,
@@ -25,18 +25,13 @@ from tests.utils import (
 )
 
 
-@torch.compile
-def gelu_fcgp_norm_3d_triton(x, y, weight):
-    return FullyConnectedGeluGeometricProductNorm3D.apply(x, y, weight, True)
-
-
 def setup_benchmark(batch_size, num_features):
     """Setup tensors and layers for fc_p3m0 benchmark."""
     algebra = CliffordAlgebra((1, 1, 1))
     sgp = FullyConnectedSteerableGeometricProductLayer(algebra, num_features, num_features).cuda()
 
-    x = torch.randn(batch_size, num_features, 8).cuda()
-    y = torch.randn(batch_size, num_features, 8).cuda()
+    x = torch.randn(8, batch_size, num_features).cuda()
+    y = torch.randn(8, batch_size, num_features).cuda()
     weight = sgp.weight.permute(2, 1, 0).contiguous()
     weight_expanded = sgp._get_weight()
 
@@ -49,7 +44,7 @@ if __name__ == "__main__":
     path = "tests/benchmarks/results/fc_p3m0"
 
     results = run_sweep(
-        gelu_fcgp_norm_3d_triton,
+        fused_gelu_fc_sgp_norm_3d,
         gelu_fcgp_norm_3d_torch,
         setup_benchmark,
         batch_sizes=[1024, 2048, 4096, 8192],

@@ -15,17 +15,9 @@ sys.path.append("clifford-group-equivariant-neural-networks")
 from algebra.cliffordalgebra import CliffordAlgebra
 from models.modules.gp import SteerableGeometricProductLayer
 
-from ops.p3m0 import WeightedGeluGeometricProductNorm3D
-from tests.utils import run_correctness_tests
+from ops.p3m0 import fused_gelu_sgp_norm_3d
+from tests.utils import run_correctness_tests, run_benchmarks
 from tests.baselines import gelu_sgp_norm_3d_torch
-
-
-
-@torch.compile
-def gelu_sgp_norm_3d_triton(x, y, weight):
-    return WeightedGeluGeometricProductNorm3D.apply(
-        x, y, weight, True
-    )
 
 
 if __name__ == "__main__":
@@ -33,17 +25,17 @@ if __name__ == "__main__":
 
     n_measure = 1000
     batch_size = 4096
-    num_features = 128
+    num_features = 512
 
     algebra = CliffordAlgebra((1, 1, 1))
     sgp = SteerableGeometricProductLayer(algebra, num_features).cuda()
 
-    x = torch.randn(batch_size, num_features, 8).cuda()
-    y = torch.randn(batch_size, num_features, 8).cuda()
+    x = torch.randn(8, batch_size, num_features).cuda()
+    y = torch.randn(8, batch_size, num_features).cuda()
     sgp_weight = sgp.weight
 
     sgp_ret, weight_triton = run_correctness_tests(
-        gelu_sgp_norm_3d_triton,
+        fused_gelu_sgp_norm_3d,
         gelu_sgp_norm_3d_torch,
         x, y,
         sgp_weight,
@@ -54,3 +46,5 @@ if __name__ == "__main__":
         f"grad_weight max diff: {(sgp_ret.weight.grad - weight_triton.grad).abs().max().item():.1e}"
         + (" ✔" if torch.allclose(sgp_ret.weight.grad, weight_triton.grad, atol=1e-2) else " ✘")
     )
+
+    run_benchmarks(fused_gelu_sgp_norm_3d, gelu_sgp_norm_3d_torch, x, y, weight_triton, sgp, 100, 5)
