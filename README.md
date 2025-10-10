@@ -28,6 +28,15 @@ Flash Clifford achieves **~10x speedup** and **22-52% memory reduction** compare
 </tr>
 </table>
 
+By switching the memory layout to `(MV_DIM, B, N)`, we are able to speedup [Clifford algebra MLP](https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47) by the factor of 20:
+
+<div align="center">
+
+<img src="tests/benchmarks/results/clifford_mlp_forward_runtime.png" alt="MLP forward time" width="50%">
+
+</div>
+
+
 
 ## Installation
 
