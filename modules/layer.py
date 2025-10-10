@@ -25,7 +25,18 @@ _CONFIG = {
 
 
 class Layer(torch.nn.Module):
-
+    """ 
+    Linear layer: grade-wise linear + weighted GP + GELU + LayerNorm.
+    Efficient implementation of https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47
+    
+    Args:
+        n_features: number of features.
+        dims: 2 or 3, dimension of the space.
+        normalize: whether to apply layer normalization at the end.
+        use_fc: whether to use fully connected GP weights.
+            True: weight has shape (n_features, n_features, num_product_weights).
+            False: weight has shape (n_features, num_product_weights).
+    """
     def __init__(self, n_features, dims, normalize=True, use_fc=False):
         super().__init__()
 
@@ -36,7 +47,11 @@ class Layer(torch.nn.Module):
         self.normalize = normalize
         self.fused_op = _FUSED_OPS[(dims, use_fc)]
 
-        gp_weight_shape = (n_features, config['num_product_weights'])
+        if use_fc:
+            gp_weight_shape = (config['num_product_weights'], n_features, n_features)
+        else:
+            gp_weight_shape = (n_features, config['num_product_weights'])
+            
         self.gp_weight = torch.nn.Parameter(torch.empty(gp_weight_shape))
 
         linear_weight_shape = (config['num_grades'], n_features, n_features)
@@ -46,8 +61,9 @@ class Layer(torch.nn.Module):
         self.register_buffer("weight_expansion", config['weight_expansion'])
 
         torch.nn.init.normal_(self.gp_weight, std=1 / (math.sqrt(dims + 1)))
-        torch.nn.init.normal_(self.linear_weight, std=1 / math.sqrt(n_features))
+        torch.nn.init.normal_(self.linear_weight, std=1 / math.sqrt(n_features) if use_fc else 1 / math.sqrt(n_features * (dims + 1)))
 
     def forward(self, x):
         y = torch.bmm(x, self.linear_weight[self.weight_expansion]) + self.linear_bias
         return self.fused_op(x, y, self.gp_weight, self.normalize)
+
