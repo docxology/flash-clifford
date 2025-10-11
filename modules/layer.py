@@ -66,4 +66,3 @@ class Layer(torch.nn.Module):
     def forward(self, x):
         y = torch.bmm(x, self.linear_weight[self.weight_expansion]) + self.linear_bias
         return self.fused_op(x, y, self.gp_weight, self.normalize)
-
