@@ -618,7 +618,7 @@ class FullyConnectedGeluGeometricProductNorm2D(torch.autograd.Function):
     @staticmethod
     @torch.amp.custom_bwd(device_type="cuda")
     def backward(ctx, grad_output):
-        assert grad_output.is_contiguous()
+        grad_output = grad_output.contiguous()
 
         x, y, weight, o, pairwise, partial_norm, expansion_indices = ctx.saved_tensors
 
@@ -637,10 +637,12 @@ class FullyConnectedGeluGeometricProductNorm2D(torch.autograd.Function):
         return grad_x, grad_y, grad_weight, None, None, None, None
 
 
-def fused_gelu_fc_sgp_norm_2d(x, y, weight, normalize=True):
+def fused_gelu_fcgp_norm_2d(x, y, weight, normalize=True):
     """
     Fused operation that applies GELU non-linearity to two multivector inputs,
     then computes their fully connected geometric product, and applies RMSNorm.
+    
+    Clifford algebra is assumed to be Cl(2,0).
 
     Args:
         x (torch.Tensor): Input tensor of shape (MV_DIM, B, N).

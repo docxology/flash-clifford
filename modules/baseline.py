@@ -1,13 +1,14 @@
 import math
 import torch
 
-from ops import fused_gelu_sgp_norm_2d, fused_gelu_sgp_norm_3d, fused_gelu_fcgp_norm_2d, fused_gelu_fcgp_norm_3d, P2M0_NUM_PRODUCT_WEIGHTS, P3M0_NUM_PRODUCT_WEIGHTS, P2M0_NUM_GRADES, P3M0_NUM_GRADES
+from ops import P2M0_NUM_PRODUCT_WEIGHTS, P3M0_NUM_PRODUCT_WEIGHTS, P2M0_NUM_GRADES, P3M0_NUM_GRADES
+from tests.baselines import gelu_sgp_norm_2d_torch, gelu_sgp_norm_3d_torch, gelu_fcgp_norm_2d_torch, gelu_fcgp_norm_3d_torch
 
 _FUSED_OPS = {
-    (2, False): fused_gelu_sgp_norm_2d,
-    (2, True): fused_gelu_fcgp_norm_2d,
-    (3, False): fused_gelu_sgp_norm_3d,
-    (3, True): fused_gelu_fcgp_norm_3d,
+    (2, False): gelu_sgp_norm_2d_torch,
+    (2, True): gelu_fcgp_norm_2d_torch,
+    (3, False): gelu_sgp_norm_3d_torch,
+    (3, True): gelu_fcgp_norm_3d_torch,
 }
 
 _CONFIG = {
@@ -27,7 +28,7 @@ _CONFIG = {
 class Layer(torch.nn.Module):
     """ 
     Linear layer: grade-wise linear + weighted GP + GELU + LayerNorm.
-    Efficient implementation of https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47
+    Metric-specific implementation of https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47
     
     Args:
         n_features: number of features.

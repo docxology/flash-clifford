@@ -700,7 +700,7 @@ class WeightedGeluGeometricProductNorm3D(torch.autograd.Function):
     @staticmethod
     @torch.amp.custom_bwd(device_type="cuda")
     def backward(ctx, grad_output):
-        assert grad_output.is_contiguous()
+        grad_output = grad_output.contiguous()
 
         x, y, weight, o, partial_norm = ctx.saved_tensors
 
@@ -721,6 +721,8 @@ def fused_gelu_sgp_norm_3d(x, y, weight, normalize=True):
     """
     Fused operation that applies GELU non-linearity to two multivector inputs,
     then computes their weighted geometric product, and applies RMSNorm.
+    
+    Clifford algebra is assumed to be Cl(3,0).
 
     Args:
         x (torch.Tensor): Input tensor of shape (MV_DIM, B, N).

@@ -3,249 +3,94 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import triton
+
+from contextlib import contextmanager
 
 
-@torch.no_grad()
-def benchmark_forward(fn, args, n_measure, warmup=50):
-    """Benchmark forward pass with warmup."""
-    for _ in range(warmup):
-        _ = fn(*args)
-
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    total_time = 0
-    
-    for _ in range(n_measure):
-        torch.cuda.synchronize()
-        start.record()
-        _ = fn(*args)
-        end.record()
-        torch.cuda.synchronize()
-        total_time += start.elapsed_time(end)
-    
-    return total_time / n_measure
-
-
-def benchmark_backward_triton(fn, x, y, weight, n_measure, warmup=50, fn_name="Triton"):
-    """Benchmark forward + backward for Triton kernels."""
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-
-    # Get output shape for creating gradient tensors
-    try:
-        with torch.no_grad():
-            out_example = fn(x, y, weight)
-        grad_shape = out_example.shape
-        del out_example
-    except RuntimeError as e:
-        if "out of memory" in str(e):
-            if fn_name:
-                print(f"  OOM in {fn_name} (pre-allocation)")
-            torch.cuda.empty_cache()
-            return None
-        raise
-
-    # Warmup
-    for _ in range(warmup):
-        try:
-            x_grad = x.clone().requires_grad_(True)
-            y_grad = y.clone().requires_grad_(True)
-            weight_grad = weight.clone().requires_grad_(True)
-            out = fn(x_grad, y_grad, weight_grad)
-            grad_output_warmup = torch.randn(grad_shape, device=x.device, dtype=x.dtype)
-            out.backward(grad_output_warmup)
-            del x_grad, y_grad, weight_grad, out, grad_output_warmup
-        except RuntimeError as e:
-            if "out of memory" in str(e):
-                if fn_name:
-                    print(f"  OOM in {fn_name} (warmup)")
-                torch.cuda.empty_cache()
-                return None
-            raise
-
-    # Benchmark
-    total_time = 0
-    for i in range(n_measure):
-        x_grad = y_grad = weight_grad = out = grad_output = None
-
-        try:
-            x_grad = x.clone().requires_grad_(True)
-            y_grad = y.clone().requires_grad_(True)
-            weight_grad = weight.clone().requires_grad_(True)
-            grad_output = torch.randn(grad_shape, device=x.device, dtype=x.dtype)
-
-            torch.cuda.synchronize()
-            start.record()
-            out = fn(x_grad, y_grad, weight_grad)
-            out.backward(grad_output)
-            end.record()
-            torch.cuda.synchronize()
-            total_time += start.elapsed_time(end)
-
-            del x_grad, y_grad, weight_grad, out, grad_output
-        except RuntimeError as e:
-            if "out of memory" in str(e):
-                if fn_name:
-                    print(f"  OOM in {fn_name} (iteration {i})")
-                for var in [x_grad, y_grad, weight_grad, out, grad_output]:
-                    if var is not None:
-                        del var
-                torch.cuda.empty_cache()
-                return None
-            raise
-
-    return total_time / n_measure
-
-
-def benchmark_backward_torch(fn, x, y, sgp, n_measure, warmup=50, fn_name="PyTorch"):
-    """Benchmark forward + backward for PyTorch implementations."""
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-
-    # Get output shape for creating gradient tensors
-    try:
-        with torch.no_grad():
-            out_example = fn(x, y, sgp._get_weight())
-        grad_shape = out_example.shape
-        del out_example
-    except RuntimeError as e:
-        if "out of memory" in str(e):
-            if fn_name:
-                print(f"  OOM in {fn_name} (pre-allocation)")
-            torch.cuda.empty_cache()
-            return None
-        raise
-
-    # Warmup
-    for _ in range(warmup):
-        try:
-            x_grad = x.clone().requires_grad_(True)
-            y_grad = y.clone().requires_grad_(True)
-            out = fn(x_grad, y_grad, sgp._get_weight())
-            grad_output_warmup = torch.randn(grad_shape, device=x.device, dtype=x.dtype)
-            out.backward(grad_output_warmup)
-            del x_grad, y_grad, out, grad_output_warmup
-        except RuntimeError as e:
-            if "out of memory" in str(e):
-                if fn_name:
-                    print(f"  OOM in {fn_name} (warmup)")
-                torch.cuda.empty_cache()
-                return None
-            raise
-
-    # Benchmark
-    total_time = 0
-    for i in range(n_measure):
-        x_grad = y_grad = out = grad_output = None
-
-        try:
-            x_grad = x.clone().requires_grad_(True)
-            y_grad = y.clone().requires_grad_(True)
-            grad_output = torch.randn(grad_shape, device=x.device, dtype=x.dtype)
-
-            torch.cuda.synchronize()
-            start.record()
-            out = fn(x_grad, y_grad, sgp._get_weight())
-            out.backward(grad_output)
-            end.record()
-            torch.cuda.synchronize()
-            total_time += start.elapsed_time(end)
-
-            del x_grad, y_grad, out, grad_output
-        except RuntimeError as e:
-            if "out of memory" in str(e):
-                if fn_name:
-                    print(f"  OOM in {fn_name} (iteration {i})")
-                for var in [x_grad, y_grad, out, grad_output]:
-                    if var is not None:
-                        del var
-                torch.cuda.empty_cache()
-                return None
-            raise
-
-    return total_time / n_measure
-
-
-def measure_memory_forward(fn, *args):
-    """Measure peak memory usage for forward pass in MB."""
+@contextmanager
+def measure_memory():
     torch.cuda.reset_peak_memory_stats()
+    torch.cuda.empty_cache()
     torch.cuda.synchronize()
     
-    try:
-        with torch.no_grad():
-            _ = fn(*args)
-        torch.cuda.synchronize()
-        return torch.cuda.max_memory_allocated() / 1024**2
-    except RuntimeError as e:
-        if "out of memory" in str(e):
-            torch.cuda.empty_cache()
-            return None
-        raise
+    peak = [None]
+    yield peak
+    
+    torch.cuda.synchronize()
+    peak[0] = torch.cuda.max_memory_allocated() / 1024**2
+    
+    
+def print_benchmark_results(avg_time_fused, avg_time_torch, mem_fused, mem_torch, title=""):
+    header_length_pad = max(0, 35 - len(title) - 4)
+    print(f"\n┌─ {title} " + "─"*header_length_pad + "┐")
+    print("│")
+    print(f"│  Runtime:")
+    print(f"│    Fused Kernel  : {avg_time_fused:>8.2f} ms")
+    print(f"│    PyTorch       : {avg_time_torch:>8.2f} ms")
+    print(f"│    Speedup       : {avg_time_torch / avg_time_fused:>8.2f}×")
+    print("│")
+    print(f"│  Memory Usage:")
+    print(f"│    Fused Kernel  : {mem_fused:>8.2f} MB")
+    print(f"│    PyTorch       : {mem_torch:>8.2f} MB")
+    print(f"│    Memory Ratio  : {mem_fused / mem_torch:>8.2f}×")
+    print("│")
+    print("└" + "─"*34 + "┘\n")
 
 
-def measure_memory_backward_triton(fn, x, y, weight, fn_name="Triton"):
-    """Measure peak memory usage for Triton kernels."""
-    x_grad = y_grad = weight_grad = out = grad_output = None
+def run_benchmark(triton_fn, torch_fn, args, rep, warmup=200, verbose=True, return_mode='mean'):
+    """Run forward and forward+backward benchmarks."""
+    # Forward-only benchmark
+    avg_time_fused = triton.testing.do_bench(lambda: triton_fn(*args), warmup, rep, return_mode=return_mode)
+    avg_time_torch = triton.testing.do_bench(lambda: torch_fn(*args), warmup, rep, return_mode=return_mode)
+    with measure_memory() as mem_fused_fwd: _ = triton_fn(*args)
+    with measure_memory() as mem_torch_fwd: _ = torch_fn(*args)
 
-    try:
-        torch.cuda.reset_peak_memory_stats()
+    # Forward + backward benchmark
+    args = [arg.clone().detach().requires_grad_(True) for arg in args]
+    avg_time_fused_bwd = triton.testing.do_bench(lambda: triton_fn(*args).sum().backward(), warmup, rep, return_mode=return_mode)
+    avg_time_torch_bwd = triton.testing.do_bench(lambda: torch_fn(*args).sum().backward(), warmup, rep, return_mode=return_mode)
+    with measure_memory() as mem_fused_bwd: _ = triton_fn(*args)
+    with measure_memory() as mem_torch_bwd: _ = torch_fn(*args)
 
-        x_grad = x.clone().detach().requires_grad_(True)
-        y_grad = y.clone().detach().requires_grad_(True)
-        weight_grad = weight.clone().detach().requires_grad_(True)
-
-        torch.cuda.synchronize()
-        out = fn(x_grad, y_grad, weight_grad)
-        grad_output = torch.randn_like(out)
-        out.backward(grad_output)
-        torch.cuda.synchronize()
-
-        peak_memory = torch.cuda.max_memory_allocated() / 1024**2
-        del x_grad, y_grad, weight_grad, out, grad_output
-        return peak_memory
-        
-    except RuntimeError as e:
-        if "out of memory" in str(e):
-            if fn_name:
-                print(f"  OOM in {fn_name}")
-            for var in [x_grad, y_grad, weight_grad, out, grad_output]:
-                if var is not None:
-                    del var
-            torch.cuda.empty_cache()
-            return None
-        raise
+    if verbose:
+        print_benchmark_results(
+            avg_time_fused, avg_time_torch, mem_fused_fwd[0], mem_torch_fwd[0],
+            title="Forward Pass"
+        )
+        print_benchmark_results(
+            avg_time_fused_bwd, avg_time_torch_bwd, mem_fused_bwd[0], mem_torch_bwd[0],
+            title="Forward + Backward Pass"
+        )
+            
+    return avg_time_fused, avg_time_torch, mem_fused_fwd[0], mem_torch_fwd[0], avg_time_fused_bwd, avg_time_torch_bwd, mem_fused_bwd[0], mem_torch_bwd[0]
 
 
-def measure_memory_backward_torch(fn, x, y, sgp, fn_name="PyTorch"):
-    """Measure peak memory usage for PyTorch implementations."""
-    x_grad = y_grad = out = grad_output = None
+def run_correctness_test(triton_fn, torch_fn, kwargs):
+    """Run forward and backward correctness test."""
+    # Forward correctness check
+    out_triton = triton_fn(**kwargs)
+    out_torch = torch_fn(**kwargs)
 
-    try:
-        torch.cuda.reset_peak_memory_stats()
+    max_diff = (out_torch - out_triton).abs().max().item()
+    is_correct = torch.allclose(out_torch, out_triton, atol=1e-5)
+    check_mark = " ✔" if is_correct else " ✘"
+    print(f"Max absolute difference (fwd): {max_diff:.1e}{check_mark}")
 
-        x_grad = x.clone().detach().requires_grad_(True)
-        y_grad = y.clone().detach().requires_grad_(True)
+    # Backward correctness check
+    kwargs = {k: v.clone().detach().requires_grad_(True) for k, v in kwargs.items()}
+    
+    out_torch = torch_fn(**kwargs)
+    out_triton = triton_fn(**kwargs)
 
-        torch.cuda.synchronize()
-        out = fn(x_grad, y_grad, sgp._get_weight())
-        grad_output = torch.randn_like(out)
-        out.backward(grad_output)
-        torch.cuda.synchronize()
+    grad_output = torch.randn_like(out_torch).contiguous()
+    out_torch.backward(grad_output)
+    out_triton.backward(grad_output)
 
-        peak_memory = torch.cuda.max_memory_allocated() / 1024**2
-        del x_grad, y_grad, out, grad_output
-        return peak_memory
-        
-    except RuntimeError as e:
-        if "out of memory" in str(e):
-            if fn_name:
-                print(f"  OOM in {fn_name}")
-            for var in [x_grad, y_grad, out, grad_output]:
-                if var is not None:
-                    del var
-            torch.cuda.empty_cache()
-            return None
-        raise
+    for name, arg in kwargs.items():
+        grad_diff = (arg.grad - arg.grad).abs().max().item()
+        grad_correct = torch.allclose(arg.grad, arg.grad, atol=1e-2)
+        print(f"grad {name} max diff: {grad_diff:.1e}" + (" ✔" if grad_correct else " ✘"))
 
 
 def plot_heatmap(results, metric_key, title, save_path, cmap='RdYlGn', invert_cmap=False):
@@ -289,73 +134,6 @@ def plot_heatmap(results, metric_key, title, save_path, cmap='RdYlGn', invert_cm
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     print(f"Heatmap saved to: {save_path}")
     plt.close()
-
-
-def run_correctness_tests(triton_fn, torch_fn, x, y, weight, sgp):
-    """Run forward and backward correctness tests."""
-    # Warmup
-    _ = triton_fn(x, y, weight)
-    _ = torch_fn(x, y, sgp._get_weight())
-    
-    # Forward correctness check
-    out_triton = triton_fn(x, y, weight)
-    out_torch = torch_fn(x, y, sgp._get_weight())
-
-    max_diff = (out_torch - out_triton).abs().max().item()
-    is_correct = torch.allclose(out_torch, out_triton, atol=1e-5)
-    check_mark = " ✔" if is_correct else " ✘"
-    print(f"Max absolute difference (fwd): {max_diff:.1e}{check_mark}")
-
-    # Backward correctness check
-    x_torch = x.clone().detach().requires_grad_(True)
-    y_torch = y.clone().detach().requires_grad_(True)
-
-    x_triton = x.clone().detach().requires_grad_(True)
-    y_triton = y.clone().detach().requires_grad_(True)
-    weight_triton = weight.detach().clone().requires_grad_(True)
-    
-    out_torch = torch_fn(x_torch, y_torch, sgp._get_weight())
-    out_triton = triton_fn(x_triton, y_triton, weight_triton)
-
-    grad_output = torch.randn_like(out_torch).contiguous()
-    out_torch.backward(grad_output)
-    out_triton.backward(grad_output)
-
-    print("\nBackward correctness:")
-    grad_x_diff = (x_torch.grad - x_triton.grad).abs().max().item()
-    grad_x_correct = torch.allclose(x_torch.grad, x_triton.grad, atol=1e-1)
-    print(f"grad_x max diff: {grad_x_diff:.1e}{' ✔' if grad_x_correct else ' ✘'}")
-    
-    grad_y_diff = (y_torch.grad - y_triton.grad).abs().max().item()
-    grad_y_correct = torch.allclose(y_torch.grad, y_triton.grad, atol=1e-1)
-    print(f"grad_y max diff: {grad_y_diff:.1e}{' ✔' if grad_y_correct else ' ✘'}")
-
-    return sgp, weight_triton
-
-
-def run_benchmarks(triton_fn, torch_fn, x, y, weight, sgp, n_measure, warmup_iters=5):
-    """Run forward and forward+backward benchmarks."""
-    # Warmup
-    with torch.no_grad():
-        for _ in range(warmup_iters):
-            _ = triton_fn(x, y, weight)
-            _ = torch_fn(x, y, sgp._get_weight())
-
-    # Forward-only benchmark
-    avg_time_fused = benchmark_forward(triton_fn, (x, y, weight), n_measure, warmup=0)
-    avg_time_torch = benchmark_forward(torch_fn, (x, y, sgp._get_weight()), n_measure, warmup=0)
-
-    print(f"\nFwd time (fused kernel): {avg_time_fused:.2f} ms")
-    print(f"Fwd time (torch): {avg_time_torch:.2f} ms")
-    print(f"Fwd Speedup: {avg_time_torch / avg_time_fused:.2f}x")
-
-    # Forward + backward benchmark
-    avg_time_fused_bwd = benchmark_backward_triton(triton_fn, x, y, weight, n_measure, warmup=5)
-    avg_time_torch_bwd = benchmark_backward_torch(torch_fn, x, y, sgp, n_measure, warmup=5)
-
-    print(f"\nFwd + bwd time (fused kernel): {avg_time_fused_bwd:.2f} ms")
-    print(f"Fwd + bwd time (torch): {avg_time_torch_bwd:.2f} ms")
-    print(f"Fwd + bwd Speedup: {avg_time_torch_bwd / avg_time_fused_bwd:.2f}x")
 
 
 def print_results_table(results, title):
@@ -429,82 +207,62 @@ def print_results_table(results, title):
     print(separator)
 
 
-def run_single_benchmark(triton_fn, torch_fn, setup_fn, batch_size=4096, 
-                        num_features=512, n_measure=1000):
+def run_single_benchmark(triton_fn, torch_fn, setup_fn, batch_size, num_features, rep, warmup=200, verify_correctness=True, return_mode='mean'):
     """Run a single benchmark configuration."""
-    x, y, weight, weight_expanded, sgp = setup_fn(batch_size, num_features)
+    args = setup_fn(batch_size, num_features)
 
-    with torch.no_grad():
-        out_triton = triton_fn(x, y, weight)
-        out_torch = torch_fn(x, y, weight_expanded)
+    out_triton = triton_fn(*args)
+    out_torch = torch_fn(*args)
 
-    is_correct = torch.allclose(out_torch, out_triton, atol=1e-5)
-    max_diff = (out_torch - out_triton).abs().max().item()
+    if verify_correctness:
+        is_correct = torch.allclose(out_torch, out_triton, atol=1e-5)
+        max_diff = (out_torch - out_triton).abs().max().item()
+    else:
+        is_correct = False
+        max_diff = 1e10
 
-    # Forward benchmarks
-    time_fwd_fused = benchmark_forward(triton_fn, (x, y, weight), n_measure)
-    time_fwd_torch = benchmark_forward(torch_fn, (x, y, weight_expanded), n_measure)
-
-    # Forward + backward benchmarks
-    time_fwd_bwd_fused = benchmark_backward_triton(triton_fn, x, y, weight, n_measure)
-    time_fwd_bwd_torch = benchmark_backward_torch(torch_fn, x, y, sgp, n_measure)
-
-    # Forward memory
-    mem_fwd_fused = measure_memory_forward(triton_fn, x, y, weight)
-    mem_fwd_torch = measure_memory_forward(torch_fn, x, y, weight_expanded)
-
-    # Forward + backward memory
-    mem_fwd_bwd_fused = measure_memory_backward_triton(triton_fn, x, y, weight)
-    mem_fwd_bwd_torch = measure_memory_backward_torch(torch_fn, x, y, sgp)
-
-    # Calculate speedup and ratios
-    speedup_fwd = (time_fwd_torch / time_fwd_fused 
-                   if time_fwd_fused and time_fwd_torch else None)
-    speedup_fwd_bwd = (time_fwd_bwd_torch / time_fwd_bwd_fused 
-                       if time_fwd_bwd_fused and time_fwd_bwd_torch else None)
-    mem_ratio_fwd = (mem_fwd_fused / mem_fwd_torch 
-                     if mem_fwd_fused and mem_fwd_torch and mem_fwd_torch > 0 else None)
-    mem_ratio_fwd_bwd = (mem_fwd_bwd_fused / mem_fwd_bwd_torch 
-                         if mem_fwd_bwd_fused and mem_fwd_bwd_torch and mem_fwd_bwd_torch > 0 
-                         else None)
+    time_fwd_fused, time_fwd_torch, mem_fwd_fused, mem_fwd_torch, \
+    time_fwd_bwd_fused, time_fwd_bwd_torch, mem_fwd_bwd_fused, mem_fwd_bwd_torch = \
+        run_benchmark(
+            triton_fn, torch_fn, args, rep, 
+            warmup=warmup, verbose=False, return_mode=return_mode
+        )
 
     return {
         'batch_size': batch_size,
         'num_features': num_features,
         'time_fwd_fused': time_fwd_fused,
         'time_fwd_torch': time_fwd_torch,
-        'speedup_fwd': speedup_fwd,
+        'speedup_fwd': time_fwd_torch / time_fwd_fused if time_fwd_fused else None,
         'time_fwd_bwd_fused': time_fwd_bwd_fused,
         'time_fwd_bwd_torch': time_fwd_bwd_torch,
-        'speedup_fwd_bwd': speedup_fwd_bwd,
+        'speedup_fwd_bwd': time_fwd_bwd_torch / time_fwd_bwd_fused if time_fwd_bwd_fused else None,
         'mem_fwd_fused': mem_fwd_fused,
         'mem_fwd_torch': mem_fwd_torch,
-        'mem_ratio_fwd': mem_ratio_fwd,
+        'mem_ratio_fwd': mem_fwd_fused / mem_fwd_torch if mem_fwd_torch else None,
         'mem_fwd_bwd_fused': mem_fwd_bwd_fused,
         'mem_fwd_bwd_torch': mem_fwd_bwd_torch,
-        'mem_ratio_fwd_bwd': mem_ratio_fwd_bwd,
+        'mem_ratio_fwd_bwd': mem_fwd_bwd_fused / mem_fwd_bwd_torch if mem_fwd_bwd_torch else None,
         'max_diff': max_diff,
         'is_correct': is_correct,
     }
-
+    
 
 def run_sweep(triton_fn, torch_fn, setup_fn,
               batch_sizes=[1024, 2048, 4096, 8192],
               num_features_list=[128, 256, 512, 1024],
-              n_measure=1000):
+              rep=1000):
     """Run benchmark sweep across batch sizes and feature dimensions."""
     results = []
 
     print("Running benchmark sweep...")
     print(f"Batch sizes: {batch_sizes}")
     print(f"Num features: {num_features_list}")
-    print(f"Measurements per config: {n_measure}\n")
 
     for batch_size in batch_sizes:
         for num_features in num_features_list:
             print(f"Running batch_size={batch_size}, num_features={num_features}...", end=" ")
-            result = run_single_benchmark(triton_fn, torch_fn, setup_fn, 
-                                         batch_size, num_features, n_measure)
+            result = run_single_benchmark(triton_fn, torch_fn, setup_fn, batch_size, num_features, rep)
             results.append(result)
 
             fwd_msg = (f"Fwd: {result['speedup_fwd']:.2f}x" 
