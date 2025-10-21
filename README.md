@@ -15,7 +15,7 @@ Flash Clifford achieves **~10x speedup** and **22-52% memory reduction** compare
 
 <div align="center">
 
-<img src="tests/benchmarks/results/clifford_mlp_forward_runtime.png" alt="MLP forward time" width="50%">
+<img src="tests/benchmarks/results/clifford_mlp_forward_runtime.png" alt="MLP forward time" width="70%">
 
 </div>
 
