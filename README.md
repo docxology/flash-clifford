@@ -11,24 +11,7 @@ The implementation fuses GELU activation, fully-connected/weighted geometric pro
 
 ## Performance
 
-Flash Clifford achieves **~10x speedup** and **22-52% memory reduction** compared to PyTorch baseline (both torch compiled):
-
-<table>
-<tr>
-<td width="50%">
-
-![Forward Runtime Comparison](tests/benchmarks/results/fc_p3m0/speedup/comparison.png)
-
-</td>
-<td width="50%">
-
-![Memory Usage Comparison](tests/benchmarks/results/fc_p3m0/memory/comparison.png)
-
-</td>
-</tr>
-</table>
-
-By switching the memory layout to `(MV_DIM, B, N)`, we are able to get 20x speedup of [Clifford algebra MLP](https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47):
+Flash Clifford achieves **~10x speedup** and **22-52% memory reduction** compared to [PyTorch baseline](https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47). By switching the memory layout to `(MV_DIM, B, N)`, we are able to get significant speedup of [Clifford algebra MLP](https://github.com/DavidRuhe/clifford-group-equivariant-neural-networks/blob/8482b06b71712dcea2841ebe567d37e7f8432d27/models/nbody_cggnn.py#L47):
 
 <div align="center">
 
