@@ -49,13 +49,13 @@ output = layer(x)
 Run benchmarks with:
 
 ```bash
-python tests/benchmarks/fc_p3m0.py
+python -m tests.benchmarks.layer_3d
 ```
 
 ## Testing
 
-Verify correctness against PyTorch baseline:
+Verify correctness against a PyTorch baseline:
 
 ```bash
-python tests/fc_p3m0.py
+python -m tests.p3m0
 ```
