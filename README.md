@@ -46,7 +46,7 @@ which is a primitive of a [Clifford Algebra MLP](https://github.com/DavidRuhe/cl
 We compare against `cuEquivariance` (using the correspondence between multivectors and irreps) and the baseline CEGNN implementation, achieving significant improvements:
 
 <div align="center">
-<img src="tests/benchmarks/results/clifford_mlp_forward_runtime.png" alt="MLP forward time" width="90%">
+<img src="tests/benchmarks/results/clifford_mlp_fwd_bwd_runtime.png" alt="MLP forward time" width="90%">
 <img src="tests/benchmarks/results/clifford_mlp_runtime_scaling.png" alt="MLP forward time" width="90%">
 </div>
 
