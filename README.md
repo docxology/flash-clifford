@@ -8,14 +8,14 @@
 
 </div>
 
-## $\operatorname{O}(n)$-Equivariant operators
-The list of currently implemented $\operatorname{O}(2)$- and $\operatorname{O}(3)$-equivariant operators:
+## $O(n)$-Equivariant operators
+The list of currently implemented $O(2)$- and $O(3)$-equivariant operators:
 - `fused_gelu_sgp_norm_nd`: multivector GELU $\rightarrow$ weighted geometric product $\rightarrow$ (optionally) multivector RMSNorm
 - `fused_gelu_fcgp_norm_nd`: multivector GELU $\rightarrow$ fully connected geometric product $\rightarrow$ (optionally) multivector RMSNorm
 - `linear layer`: multivector linear $\rightarrow$ `fused_gelu_sgp_norm_nd`
 
 ## Primer on Clifford Algebra
-Clifford algebra is tightly connected to the Euclidean group $\operatorname{E}(n)$. That is, elements of Clifford algebra are **multivectors** - stacks of basis elemenths (scalar, vector, etc.). Those elements correspond 1:1 to irreducible representations of $\operatorname{O}(n)$. For example, for 3D:
+Clifford algebra is tightly connected to the Euclidean group $E(n)$. That is, elements of Clifford algebra are **multivectors** - stacks of basis elemenths (scalar, vector, etc.). Those elements correspond 1:1 to irreducible representations of $O(n)$. For example, for 3D:
 
 | Grades           | Irreps |
 |------------------|--------|
