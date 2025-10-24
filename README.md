@@ -17,7 +17,7 @@ The list of currently implemented $O(2)$- and $O(3)$-equivariant operators:
 Any suggestions for different operators are welcome :)
 
 ## Primer on Clifford Algebra
-Clifford algebra is tightly connected to the Euclidean group $E(n)$. That is, elements of Clifford algebra are **multivectors** - stacks of basis elemenths (scalar, vector, etc.). Those elements correspond 1:1 to irreducible representations of $O(n)$. For example, for 3D:
+Clifford algebra is tightly connected to the Euclidean group $E(n)$. That is, elements of Clifford algebra are **multivectors** - stacks of basis components (scalar, vector, etc.). Those components correspond 1:1 to irreducible representations of $O(n)$. For example, for 3D:
 
 | Grades           | Irreps |
 |------------------|--------|
