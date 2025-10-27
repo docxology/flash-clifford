@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-26T18:09:50.043592",
+  "dimensions": 2,
+  "tests": {
+    "rotation_equivariance": {
+      "rotation_angle_degrees": 45.0,
+      "max_error": 2.384185791015625e-07,
+      "passed": true,
+      "description": "Rotation equivariance test for 2D"
+    }
+  }
+}

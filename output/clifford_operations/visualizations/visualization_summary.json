@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-10-26T18:09:53.386473",
+  "total_plots": 8,
+  "plots": {
+    "input_components_2d": {
+      "path": "output/clifford_operations/visualizations/input_components_2d.png",
+      "size_kb": 222.09,
+      "exists": true
+    },
+    "gelu_components_2d": {
+      "path": "output/clifford_operations/visualizations/gelu_components_2d.png",
+      "size_kb": 243.4,
+      "exists": true
+    },
+    "norm_components_2d": {
+      "path": "output/clifford_operations/visualizations/norm_components_2d.png",
+      "size_kb": 234.95,
+      "exists": true
+    },
+    "gp_components_2d": {
+      "path": "output/clifford_operations/visualizations/gp_components_2d.png",
+      "size_kb": 252.73,
+      "exists": true
+    },
+    "input_components_3d": {
+      "path": "output/clifford_operations/visualizations/input_components_3d.png",
+      "size_kb": 291.56,
+      "exists": true
+    },
+    "gp_components_3d": {
+      "path": "output/clifford_operations/visualizations/gp_components_3d.png",
+      "size_kb": 299.04,
+      "exists": true
+    },
+    "operation_flow": {
+      "path": "output/clifford_operations/visualizations/operation_flow.png",
+      "size_kb": 359.46,
+      "exists": true
+    },
+    "mathematical_properties": {
+      "path": "output/clifford_operations/visualizations/mathematical_properties.png",
+      "size_kb": 281.32,
+      "exists": true
+    }
+  }
+}

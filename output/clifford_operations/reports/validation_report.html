@@ -1,0 +1,354 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Flash Clifford Validation Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+            .section { margin: 20px 0; padding: 15px; border-left: 3px solid #007acc; }
+            .pass { color: green; font-weight: bold; }
+            .fail { color: red; font-weight: bold; }
+            .warning { color: orange; font-weight: bold; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .code { background: #f5f5f5; padding: 10px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🧪 Flash Clifford Validation Report</h1>
+            <p><strong>Generated:</strong> 2025-10-26 18:09:53</p>
+            <p><strong>System:</strong> Darwin 25.0.0</p>
+            <p><strong>PyTorch:</strong> 2.8.0</p>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Validation Summary</h2>
+            <p>This report contains comprehensive validation results for Flash Clifford operations.</p>
+        </div>
+        
+        
+        
+        <div class="section">
+            <h2>🔍 Detailed Results</h2>
+            <div class="code">
+{
+  "mathematical_validation": {
+    "timestamp": "2025-10-26T18:09:50.043122",
+    "tests": {
+      "gelu_approximate_linearity": {
+        "max_error": 0.954533040523529,
+        "passed": true,
+        "description": "GELU approximate linearity test (expected to have some error)"
+      },
+      "shape_preservation": {
+        "gelu": {
+          "input_shape": [
+            4,
+            16,
+            32
+          ],
+          "output_shape": [
+            4,
+            16,
+            32
+          ],
+          "preserved": true
+        },
+        "rmsnorm_2d": {
+          "input_shape": [
+            4,
+            16,
+            32
+          ],
+          "output_shape": [
+            4,
+            16,
+            32
+          ],
+          "preserved": true
+        }
+      },
+      "finite_outputs": {
+        "gelu": {
+          "all_finite": true,
+          "num_nan": 0,
+          "num_inf": 0
+        },
+        "rmsnorm_2d": {
+          "all_finite": true,
+          "num_nan": 0,
+          "num_inf": 0
+        }
+      }
+    }
+  },
+  "equivariance_2d": {
+    "timestamp": "2025-10-26T18:09:50.043592",
+    "dimensions": 2,
+    "tests": {
+      "rotation_equivariance": {
+        "rotation_angle_degrees": 45.0,
+        "max_error": 2.384185791015625e-07,
+        "passed": true,
+        "description": "Rotation equivariance test for 2D"
+      }
+    }
+  },
+  "equivariance_3d": {
+    "timestamp": "2025-10-26T18:09:50.049198",
+    "dimensions": 3,
+    "tests": {
+      "rotation_equivariance": {
+        "rotation_angle_degrees": 29.999999999999996,
+        "max_error": 1.1920928955078125e-07,
+        "passed": true,
+        "description": "Rotation equivariance test for 3D"
+      }
+    }
+  },
+  "stability_analysis": {
+    "timestamp": "2025-10-26T18:09:50.049542",
+    "test_scales": [
+      1e-06,
+      0.001,
+      1.0,
+      1000.0,
+      1000000.0
+    ],
+    "results": {
+      "scale_1e-06": {
+        "gelu": {
+          "input_scale": 1e-06,
+          "output_mean": 1.197237420313968e-09,
+          "output_std": 4.706784011432319e-07,
+          "output_min": -1.407077320436656e-06,
+          "output_max": 1.5090835177034023e-06,
+          "all_finite": true,
+          "dynamic_range": 2.9161608381400583e-06
+        },
+        "rmsnorm_2d": {
+          "input_scale": 1e-06,
+          "output_mean": 2.394315743003972e-06,
+          "output_std": 0.0009413561201654375,
+          "output_min": -0.0028141525108367205,
+          "output_max": 0.003018164075911045,
+          "all_finite": true,
+          "dynamic_range": 0.005832316353917122
+        }
+      },
+      "scale_1e-03": {
+        "gelu": {
+          "input_scale": 0.001,
+          "output_mean": -2.338410195079632e-05,
+          "output_std": 0.0004987102001905441,
+          "output_min": -0.0017232786631211638,
+          "output_max": 0.0013410941464826465,
+          "all_finite": true,
+          "dynamic_range": 0.0030643728096038103
+        },
+        "rmsnorm_2d": {
+          "input_scale": 0.001,
+          "output_mean": -0.03139708936214447,
+          "output_std": 0.640561044216156,
+          "output_min": -1.8791236877441406,
+          "output_max": 1.8331981897354126,
+          "all_finite": true,
+          "dynamic_range": 3.7123217582702637
+        }
+      },
+      "scale_1e+00": {
+        "gelu": {
+          "input_scale": 1.0,
+          "output_mean": 0.0732385590672493,
+          "output_std": 0.5836851596832275,
+          "output_min": -2.158489227294922,
+          "output_max": 2.2682337760925293,
+          "all_finite": true,
+          "dynamic_range": 4.426723003387451
+        },
+        "rmsnorm_2d": {
+          "input_scale": 1.0,
+          "output_mean": 0.013528767973184586,
+          "output_std": 0.8667661547660828,
+          "output_min": -2.7939651012420654,
+          "output_max": 2.3386647701263428,
+          "all_finite": true,
+          "dynamic_range": 5.132629871368408
+        }
+      },
+      "scale_1e+03": {
+        "gelu": {
+          "input_scale": 1000.0,
+          "output_mean": 109.63103485107422,
+          "output_std": 794.2489013671875,
+          "output_min": -3163.090087890625,
+          "output_max": 2839.876220703125,
+          "all_finite": true,
+          "dynamic_range": 6002.96630859375
+        },
+        "rmsnorm_2d": {
+          "input_scale": 1000.0,
+          "output_mean": 0.030014382675290108,
+          "output_std": 0.8663516044616699,
+          "output_min": -2.7515571117401123,
+          "output_max": 2.6662306785583496,
+          "all_finite": true,
+          "dynamic_range": 5.417787551879883
+        }
+      },
+      "scale_1e+06": {
+        "gelu": {
+          "input_scale": 1000000.0,
+          "output_mean": 44588.65234375,
+          "output_std": 706621.25,
+          "output_min": -2881056.25,
+          "output_max": 3253193.5,
+          "all_finite": true,
+          "dynamic_range": 6134250.0
+        },
+        "rmsnorm_2d": {
+          "input_scale": 1000000.0,
+          "output_mean": -0.05253370478749275,
+          "output_std": 0.8652759790420532,
+          "output_min": -2.921152114868164,
+          "output_max": 2.4227559566497803,
+          "all_finite": true,
+          "dynamic_range": 5.343908309936523
+        }
+      }
+    }
+  },
+  "gradient_info": {
+    "x_grad": {
+      "has_gradient": true,
+      "grad_shape": [
+        4,
+        16,
+        32
+      ],
+      "grad_norm": 30.053468704223633,
+      "grad_mean": 0.5088157057762146,
+      "grad_std": 0.42686837911605835,
+      "grad_min": -1.394277572631836,
+      "grad_max": 2.3295016288757324
+    },
+    "y_grad": {
+      "has_gradient": false
+    },
+    "weight_grad": {
+      "has_gradient": false
+    }
+  },
+  "operations_data": {
+    "gelu": {
+      "input_norm": 44.8653450012207,
+      "output_norm": 27.694704055786133,
+      "exec_time": 0.13518333435058594,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "rmsnorm_2d": {
+      "input_norm": 44.8653450012207,
+      "output_norm": 39.19182205200195,
+      "exec_time": 0.18215179443359375,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "sgp_2d": {
+      "input_norm": 45.551368713378906,
+      "output_norm": 91.385009765625,
+      "exec_time": 0.11110305786132812,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "sgp_3d": {
+      "input_norm": 64.80418395996094,
+      "output_norm": 183.2196807861328,
+      "exec_time": 0.14495849609375,
+      "memory_mb": 0,
+      "numerical_error": 0
+    }
+  },
+  "timing_data": {
+    "gelu": {
+      "forward_time": 0.13518333435058594,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "rmsnorm_2d": {
+      "forward_time": 0.18215179443359375,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "sgp_2d": {
+      "forward_time": 0.11110305786132812,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "sgp_3d": {
+      "forward_time": 0.14495849609375,
+      "backward_time": 0,
+      "memory_mb": 0
+    }
+  },
+  "system_info": {
+    "timestamp": "2025-10-26T18:09:46.995920",
+    "platform": {
+      "system": "Darwin",
+      "release": "25.0.0",
+      "version": "Darwin Kernel Version 25.0.0: Wed Sep 17 21:41:26 PDT 2025; root:xnu-12377.1.9~141/RELEASE_ARM64_T6041",
+      "machine": "arm64",
+      "processor": "arm"
+    },
+    "python": {
+      "version": "3.13.7",
+      "implementation": "CPython"
+    },
+    "hardware": {
+      "cpu_count": 14,
+      "memory_gb": 24.0
+    },
+    "pytorch": {
+      "version": "2.8.0",
+      "cuda_available": false
+    }
+  },
+  "validation_summary": {
+    "shape_tests": {
+      "gelu": true,
+      "norm": true,
+      "gp_2d": true,
+      "gp_3d": true
+    },
+    "finite_tests": {
+      "gelu": true,
+      "norm": true,
+      "gp_2d": true,
+      "gp_3d": true
+    },
+    "gradient_tests": {
+      "x_grad_available": true,
+      "x_grad_finite": true
+    }
+  }
+}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>✅ Recommendations</h2>
+            <ul>
+                <li>All operations should preserve tensor shapes</li>
+                <li>Outputs should be finite (no NaN or Inf values)</li>
+                <li>Equivariance properties should be maintained</li>
+                <li>Numerical stability should be verified across scales</li>
+                <li>Training curves should show convergence</li>
+                <li>Model weights should be well-distributed</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    

@@ -1,0 +1,215 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Flash Clifford Validation Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+            .section { margin: 20px 0; padding: 15px; border-left: 3px solid #007acc; }
+            .pass { color: green; font-weight: bold; }
+            .fail { color: red; font-weight: bold; }
+            .warning { color: orange; font-weight: bold; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .code { background: #f5f5f5; padding: 10px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🧪 Flash Clifford Validation Report</h1>
+            <p><strong>Generated:</strong> 2025-10-26 18:09:42</p>
+            <p><strong>System:</strong> Darwin 25.0.0</p>
+            <p><strong>PyTorch:</strong> 2.8.0</p>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Validation Summary</h2>
+            <p>This report contains comprehensive validation results for Flash Clifford operations.</p>
+        </div>
+        
+        
+        
+        <div class="section">
+            <h2>🔍 Detailed Results</h2>
+            <div class="code">
+{
+  "mathematical_validation": {
+    "timestamp": "2025-10-26T18:09:40.570638",
+    "tests": {
+      "gelu_approximate_linearity": {
+        "max_error": 0.8716519474983215,
+        "passed": true,
+        "description": "GELU approximate linearity test (expected to have some error)"
+      },
+      "shape_preservation": {
+        "gelu": {
+          "input_shape": [
+            4,
+            32,
+            64
+          ],
+          "output_shape": [
+            4,
+            32,
+            64
+          ],
+          "preserved": true
+        },
+        "rmsnorm_2d": {
+          "input_shape": [
+            4,
+            32,
+            64
+          ],
+          "output_shape": [
+            4,
+            32,
+            64
+          ],
+          "preserved": true
+        }
+      },
+      "finite_outputs": {
+        "gelu": {
+          "all_finite": true,
+          "num_nan": 0,
+          "num_inf": 0
+        },
+        "rmsnorm_2d": {
+          "all_finite": true,
+          "num_nan": 0,
+          "num_inf": 0
+        }
+      }
+    }
+  },
+  "gradient_info": {
+    "x_grad": {
+      "has_gradient": true,
+      "grad_shape": [
+        4,
+        32,
+        64
+      ],
+      "grad_norm": 58.965606689453125,
+      "grad_mean": 0.49403542280197144,
+      "grad_std": 0.4247145354747772,
+      "grad_min": -1.705819845199585,
+      "grad_max": 2.9343044757843018
+    },
+    "y_grad": {
+      "has_gradient": false
+    }
+  },
+  "operations_data": {
+    "gelu": {
+      "input_norm": 89.6814956665039,
+      "output_norm": 52.563507080078125,
+      "exec_time": 0.14901161193847656,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "rmsnorm": {
+      "input_norm": 89.6814956665039,
+      "output_norm": 78.38362121582031,
+      "exec_time": 0.43702125549316406,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "sgp_2d": {
+      "input_norm": 89.87387084960938,
+      "output_norm": 187.35989379882812,
+      "exec_time": 0.11801719665527344,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "basic_2d": {
+      "input_norm": 89.87387084960938,
+      "output_norm": 61.806976318359375,
+      "exec_time": 0.125885009765625,
+      "memory_mb": 0,
+      "numerical_error": 0
+    },
+    "sgp_3d": {
+      "input_norm": 127.39622497558594,
+      "output_norm": 355.3726806640625,
+      "exec_time": 0.164031982421875,
+      "memory_mb": 0,
+      "numerical_error": 0
+    }
+  },
+  "timing_data": {
+    "gelu": {
+      "forward_time": 0.14901161193847656,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "rmsnorm": {
+      "forward_time": 0.43702125549316406,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "sgp_2d": {
+      "forward_time": 0.11801719665527344,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "basic_2d": {
+      "forward_time": 0.125885009765625,
+      "backward_time": 0,
+      "memory_mb": 0
+    },
+    "sgp_3d": {
+      "forward_time": 0.164031982421875,
+      "backward_time": 0,
+      "memory_mb": 0
+    }
+  },
+  "system_info": {
+    "timestamp": "2025-10-26T18:09:40.430958",
+    "platform": {
+      "system": "Darwin",
+      "release": "25.0.0",
+      "version": "Darwin Kernel Version 25.0.0: Wed Sep 17 21:41:26 PDT 2025; root:xnu-12377.1.9~141/RELEASE_ARM64_T6041",
+      "machine": "arm64",
+      "processor": "arm"
+    },
+    "python": {
+      "version": "3.13.7",
+      "implementation": "CPython"
+    },
+    "hardware": {
+      "cpu_count": 14,
+      "memory_gb": 24.0
+    },
+    "pytorch": {
+      "version": "2.8.0",
+      "cuda_available": false
+    }
+  },
+  "validation_summary": {
+    "all_2d_finite": true,
+    "all_3d_finite": true,
+    "shape_preserved": true,
+    "correct_dtypes": true
+  }
+}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>✅ Recommendations</h2>
+            <ul>
+                <li>All operations should preserve tensor shapes</li>
+                <li>Outputs should be finite (no NaN or Inf values)</li>
+                <li>Equivariance properties should be maintained</li>
+                <li>Numerical stability should be verified across scales</li>
+                <li>Training curves should show convergence</li>
+                <li>Model weights should be well-distributed</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-10-26T18:09:45.040247",
+  "total_plots": 2,
+  "plots": {
+    "training_curves": {
+      "path": "output/simple_network/visualizations/training_curves.png",
+      "size_kb": 372.79,
+      "exists": true
+    },
+    "performance_metrics": {
+      "path": "output/simple_network/visualizations/performance_metrics.png",
+      "size_kb": 273.31,
+      "exists": true
+    }
+  }
+}

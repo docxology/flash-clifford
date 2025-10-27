@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-10-26T18:09:58.320713",
+  "total_plots": 3,
+  "plots": {
+    "performance_comparison": {
+      "path": "output/performance_analysis/visualizations/performance_comparison.png",
+      "size_kb": 299.79,
+      "exists": true
+    },
+    "scaling_analysis": {
+      "path": "output/performance_analysis/visualizations/scaling_analysis.png",
+      "size_kb": 252.11,
+      "exists": true
+    },
+    "operation_breakdown": {
+      "path": "output/performance_analysis/visualizations/operation_breakdown.png",
+      "size_kb": 113.51,
+      "exists": true
+    }
+  }
+}

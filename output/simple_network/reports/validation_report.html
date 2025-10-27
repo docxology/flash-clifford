@@ -1,0 +1,481 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Flash Clifford Validation Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+            .section { margin: 20px 0; padding: 15px; border-left: 3px solid #007acc; }
+            .pass { color: green; font-weight: bold; }
+            .fail { color: red; font-weight: bold; }
+            .warning { color: orange; font-weight: bold; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .code { background: #f5f5f5; padding: 10px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🧪 Flash Clifford Validation Report</h1>
+            <p><strong>Generated:</strong> 2025-10-26 18:09:45</p>
+            <p><strong>System:</strong> Darwin 25.0.0</p>
+            <p><strong>PyTorch:</strong> 2.8.0</p>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Validation Summary</h2>
+            <p>This report contains comprehensive validation results for Flash Clifford operations.</p>
+        </div>
+        
+        
+        <div class="section">
+            <h2>📈 Model Summary</h2>
+            <ul>
+                <li><strong>Total Parameters:</strong> 42,634</li>
+                <li><strong>Trainable Parameters:</strong> 42,634</li>
+                <li><strong>Final Loss:</strong> 1.9196</li>
+                <li><strong>Final Accuracy:</strong> 0.5781</li>
+                <li><strong>Best Accuracy:</strong> 0.5781</li>
+                <li><strong>Convergence Epoch:</strong> 10</li>
+            </ul>
+        </div>
+        
+        
+        <div class="section">
+            <h2>🔍 Detailed Results</h2>
+            <div class="code">
+{
+  "training_history": {
+    "epochs": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "losses": [
+      2.3096494674682617,
+      2.2610723972320557,
+      2.258239984512329,
+      2.218036651611328,
+      2.1372902393341064,
+      2.162342071533203,
+      2.068953275680542,
+      2.061295747756958,
+      1.9763559103012085,
+      1.9195616245269775
+    ],
+    "accuracies": [
+      0.0625,
+      0.265625,
+      0.25,
+      0.28125,
+      0.4375,
+      0.359375,
+      0.578125,
+      0.4375,
+      0.546875,
+      0.578125
+    ],
+    "learning_rates": [
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001
+    ],
+    "batch_times": [
+      24.89185333251953,
+      0.9047985076904297,
+      0.621795654296875,
+      0.5900859832763672,
+      0.6740093231201172,
+      0.5538463592529297,
+      0.5550384521484375,
+      0.5581378936767578,
+      0.6430149078369141,
+      0.5650520324707031
+    ],
+    "gradient_norms": [
+      0.5506684832267221,
+      0.5670835067326063,
+      0.5742409635076284,
+      0.5656793350091651,
+      0.5951818204562673,
+      0.5924249004273322,
+      0.58777420355655,
+      0.6043495819385559,
+      0.6964102429581561,
+      0.7860624649279877
+    ]
+  },
+  "evaluation_results": {
+    "test_losses": [
+      1.9488376379013062,
+      1.9458606243133545,
+      1.8772249221801758,
+      1.9530214071273804,
+      1.9310238361358643
+    ],
+    "test_accuracies": [
+      0.5,
+      0.515625,
+      0.546875,
+      0.46875,
+      0.484375
+    ],
+    "predictions": [
+      7,
+      8,
+      8,
+      8,
+      3,
+      7,
+      9,
+      4,
+      8,
+      7,
+      9,
+      8,
+      0,
+      7,
+      8,
+      8,
+      7,
+      8,
+      3,
+      9,
+      7,
+      9,
+      8,
+      5,
+      8,
+      8,
+      8,
+      7,
+      7,
+      8,
+      5,
+      8,
+      9,
+      0,
+      7,
+      7,
+      7,
+      8,
+      0,
+      0,
+      7,
+      9,
+      9,
+      8,
+      4,
+      8,
+      3,
+      7,
+      7,
+      7,
+      4,
+      0,
+      8,
+      7,
+      8,
+      4,
+      8,
+      9,
+      8,
+      8,
+      8,
+      3,
+      8,
+      4
+    ],
+    "confusion_data": {
+      "true": [
+        6,
+        2,
+        8,
+        1,
+        3,
+        7,
+        0,
+        4,
+        8,
+        1,
+        9,
+        2,
+        0,
+        6,
+        8,
+        2,
+        0,
+        1,
+        3,
+        9,
+        7,
+        9,
+        8,
+        5,
+        5,
+        8,
+        4,
+        1,
+        6,
+        1,
+        1,
+        1,
+        9,
+        0,
+        7,
+        7,
+        2,
+        3,
+        0,
+        0,
+        4,
+        1,
+        9,
+        5,
+        4,
+        0,
+        3,
+        2,
+        3,
+        7,
+        6,
+        0,
+        0,
+        7,
+        8,
+        2,
+        1,
+        0,
+        5,
+        2,
+        8,
+        3,
+        8,
+        4
+      ],
+      "predicted": [
+        7,
+        8,
+        8,
+        8,
+        3,
+        7,
+        9,
+        4,
+        8,
+        7,
+        9,
+        8,
+        0,
+        7,
+        8,
+        8,
+        7,
+        8,
+        3,
+        9,
+        7,
+        9,
+        8,
+        5,
+        8,
+        8,
+        8,
+        7,
+        7,
+        8,
+        5,
+        8,
+        9,
+        0,
+        7,
+        7,
+        7,
+        8,
+        0,
+        0,
+        7,
+        9,
+        9,
+        8,
+        4,
+        8,
+        3,
+        7,
+        7,
+        7,
+        4,
+        0,
+        8,
+        7,
+        8,
+        4,
+        8,
+        9,
+        8,
+        8,
+        8,
+        3,
+        8,
+        4
+      ]
+    }
+  },
+  "weight_analysis": {
+    "layers.0.weight": {
+      "shape": [
+        128,
+        64
+      ],
+      "mean": 0.0004217011737637222,
+      "std": 0.07253630459308624,
+      "min": -0.13392941653728485,
+      "max": 0.1336718499660492,
+      "norm": 6.564947128295898
+    },
+    "layers.0.bias": {
+      "shape": [
+        128
+      ],
+      "mean": 1.1277850717306137e-05,
+      "std": 0.07405541092157364,
+      "min": -0.12777535617351532,
+      "max": 0.12830637395381927,
+      "norm": 0.8345620632171631
+    },
+    "layers.1.weight": {
+      "shape": [
+        128,
+        128
+      ],
+      "mean": 0.00022562948288396,
+      "std": 0.051545917987823486,
+      "min": -0.09747403860092163,
+      "max": 0.09750976413488388,
+      "norm": 6.597737789154053
+    },
+    "layers.1.bias": {
+      "shape": [
+        128
+      ],
+      "mean": 0.0021877316758036613,
+      "std": 0.05349063128232956,
+      "min": -0.09000609070062637,
+      "max": 0.09658629447221756,
+      "norm": 0.6033167243003845
+    },
+    "layers.3.weight": {
+      "shape": [
+        10,
+        128
+      ],
+      "mean": 0.0005952388746663928,
+      "std": 0.05195647105574608,
+      "min": -0.09727619588375092,
+      "max": 0.09615269303321838,
+      "norm": 1.858246922492981
+    },
+    "layers.3.bias": {
+      "shape": [
+        10
+      ],
+      "mean": 0.021824706345796585,
+      "std": 0.03589335456490517,
+      "min": -0.05898343026638031,
+      "max": 0.06279367208480835,
+      "norm": 0.12789906561374664
+    },
+    "clifford_layer.weight": {
+      "shape": [
+        128,
+        128
+      ],
+      "mean": 0.00011142803123220801,
+      "std": 0.05173584073781967,
+      "min": -0.0973421037197113,
+      "max": 0.09716231375932693,
+      "norm": 6.621999263763428
+    },
+    "clifford_layer.bias": {
+      "shape": [
+        128
+      ],
+      "mean": 0.003610815154388547,
+      "std": 0.05158368870615959,
+      "min": -0.0877729207277298,
+      "max": 0.09196650236845016,
+      "norm": 0.5827522873878479
+    }
+  },
+  "timing_data": {
+    "training": {
+      "forward_time": 4.164934158325195,
+      "backward_time": 18.19920539855957,
+      "total_time": 24.89185333251953,
+      "memory_mb": 0
+    }
+  },
+  "system_info": {
+    "timestamp": "2025-10-26T18:09:43.924777",
+    "platform": {
+      "system": "Darwin",
+      "release": "25.0.0",
+      "version": "Darwin Kernel Version 25.0.0: Wed Sep 17 21:41:26 PDT 2025; root:xnu-12377.1.9~141/RELEASE_ARM64_T6041",
+      "machine": "arm64",
+      "processor": "arm"
+    },
+    "python": {
+      "version": "3.13.7",
+      "implementation": "CPython"
+    },
+    "hardware": {
+      "cpu_count": 14,
+      "memory_gb": 24.0
+    },
+    "pytorch": {
+      "version": "2.8.0",
+      "cuda_available": false
+    }
+  },
+  "model_summary": {
+    "total_parameters": 42634,
+    "trainable_parameters": 42634,
+    "final_loss": 1.9195616245269775,
+    "final_accuracy": 0.578125,
+    "best_accuracy": 0.578125,
+    "convergence_epoch": 10
+  }
+}
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>✅ Recommendations</h2>
+            <ul>
+                <li>All operations should preserve tensor shapes</li>
+                <li>Outputs should be finite (no NaN or Inf values)</li>
+                <li>Equivariance properties should be maintained</li>
+                <li>Numerical stability should be verified across scales</li>
+                <li>Training curves should show convergence</li>
+                <li>Model weights should be well-distributed</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    

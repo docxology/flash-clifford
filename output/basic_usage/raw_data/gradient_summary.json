@@ -1,0 +1,18 @@
+{
+  "x_grad": {
+    "has_gradient": true,
+    "grad_shape": [
+      4,
+      32,
+      64
+    ],
+    "grad_norm": 58.965606689453125,
+    "grad_mean": 0.49403542280197144,
+    "grad_std": 0.4247145354747772,
+    "grad_min": -1.705819845199585,
+    "grad_max": 2.9343044757843018
+  },
+  "y_grad": {
+    "has_gradient": false
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "timestamp": "2025-10-26T18:09:50.043122",
+  "tests": {
+    "gelu_approximate_linearity": {
+      "max_error": 0.954533040523529,
+      "passed": true,
+      "description": "GELU approximate linearity test (expected to have some error)"
+    },
+    "shape_preservation": {
+      "gelu": {
+        "input_shape": [
+          4,
+          16,
+          32
+        ],
+        "output_shape": [
+          4,
+          16,
+          32
+        ],
+        "preserved": true
+      },
+      "rmsnorm_2d": {
+        "input_shape": [
+          4,
+          16,
+          32
+        ],
+        "output_shape": [
+          4,
+          16,
+          32
+        ],
+        "preserved": true
+      }
+    },
+    "finite_outputs": {
+      "gelu": {
+        "all_finite": true,
+        "num_nan": 0,
+        "num_inf": 0
+      },
+      "rmsnorm_2d": {
+        "all_finite": true,
+        "num_nan": 0,
+        "num_inf": 0
+      }
+    }
+  }
+}

@@ -8,6 +8,32 @@
 
 </div>
 
+## Documentation
+
+📚 **[Complete Documentation](docs/)** - Comprehensive guides, research applications, and development resources
+
+### User Documentation
+- **[Core Concepts](docs/core-concepts.md)** - Mathematical foundations of Clifford algebra and multivectors
+- **[Operations API](docs/operations.md)** - Detailed documentation of fused operations and geometric products
+- **[Architecture](docs/architecture.md)** - Neural network layer implementations and design patterns
+- **[Usage Examples](docs/examples.md)** - Practical examples and tutorials for common use cases
+
+### Performance & Optimization
+- **[Performance Guide](docs/performance.md)** - Performance optimizations, benchmarking, and results analysis
+- **[Performance Tuning](docs/performance-tuning.md)** - Advanced optimization techniques and hardware-specific tuning
+- **[Implementation Details](docs/implementation.md)** - Triton kernel implementations and low-level optimizations
+
+### Development & Research
+- **[Development Guide](docs/development.md)** - Development workflow, debugging tools, and contribution guidelines
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues, debugging techniques, and solutions
+- **[Research Applications](docs/research-applications.md)** - Theoretical foundations and research use cases
+- **[API Reference](docs/api-reference.md)** - Complete API documentation for all modules and functions
+
+### Quick Links
+- **[Installation Guide](docs/index.md#installation)** - Setup and requirements
+- **[Hardware Support](docs/index.md#hardware-support)** - GPU compatibility matrix
+- **[Research Context](docs/index.md#research-context)** - Related work and applications
+
 ## $O(n)$-Equivariant operators
 The list of currently implemented $O(2)$- and $O(3)$-equivariant operators:
 - `fused_gelu_sgp_norm_nd`: multivector GELU $\rightarrow$ weighted geometric product $\rightarrow$ (optionally) multivector RMSNorm
@@ -91,6 +117,48 @@ To verify correctness against a PyTorch baseline:
 python -m tests.p3m0
 ```
 which will check both forward and backward (gradient) passes as well as measure the runtime and memory consumption.
+
+#### Test Categories
+
+- **Correctness tests**: Verify numerical accuracy against baselines
+- **Performance tests**: Ensure speedups are maintained
+- **Integration tests**: Test end-to-end functionality
+- **Hardware tests**: Verify compatibility across GPU architectures
+
+## Development
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/maxxxzdn/flash-clifford.git
+cd flash-clifford
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Run tests
+python -m pytest tests/ -v
+
+# Run benchmarks
+python -m tests.benchmarks.layer_3d
+
+# Format code
+black . && isort .
+
+# Check linting
+flake8 modules/ ops/ tests/
+```
+
+### Contributing
+
+We welcome contributions! See our [Development Guide](docs/development.md) for:
+
+- Code style and quality guidelines
+- Testing requirements
+- Performance validation
+- Documentation standards
+- Review process
 
 ## Citation
 If you find this repository helpful, please cite our work:

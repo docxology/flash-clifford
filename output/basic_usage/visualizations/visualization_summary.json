@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-10-26T18:09:42.418692",
+  "total_plots": 5,
+  "plots": {
+    "input_components_2d": {
+      "path": "output/basic_usage/visualizations/input_components_2d.png",
+      "size_kb": 237.03,
+      "exists": true
+    },
+    "gelu_components_2d": {
+      "path": "output/basic_usage/visualizations/gelu_components_2d.png",
+      "size_kb": 252.23,
+      "exists": true
+    },
+    "input_components_3d": {
+      "path": "output/basic_usage/visualizations/input_components_3d.png",
+      "size_kb": 313.93,
+      "exists": true
+    },
+    "operation_flow": {
+      "path": "output/basic_usage/visualizations/operation_flow.png",
+      "size_kb": 366.24,
+      "exists": true
+    },
+    "performance_metrics": {
+      "path": "output/basic_usage/visualizations/performance_metrics.png",
+      "size_kb": 335.44,
+      "exists": true
+    }
+  }
+}
